@@ -50,7 +50,7 @@ def convert_to_mediapipe_format(keypoints):
 
     return mediapipe_keypoints
 
-def run_detection_and_pose_estimation(source=0, save_path='data', pose_model='yolov8s-pose.pt', object_model='yolov8s.pt'):
+def run_detection_and_pose_estimation(source="source\\vid1.mp4", save_path='data', pose_model='yolov8n-pose.pt', object_model='yolov8s-detect-v2.pt'):
     """
     Run YOLOv8 pose estimation and object detection on a video source and save the pose data to JSON files.
 
@@ -66,6 +66,10 @@ def run_detection_and_pose_estimation(source=0, save_path='data', pose_model='yo
     object_model = YOLO(object_model)
     cap = cv2.VideoCapture(source)
 
+    # Set the window size to 800x600
+    cv2.namedWindow('YOLOv8 Object Detection', cv2.WINDOW_NORMAL)
+    cv2.resizeWindow('YOLOv8 Object Detection', 800, 600)
+
     frame_count = 0
     pose_data = {}
 
@@ -75,9 +79,8 @@ def run_detection_and_pose_estimation(source=0, save_path='data', pose_model='yo
             print("Failed to grab frame")
             break
 
-        # Run pose estimation and object detection
+        # Run pose estimation
         pose_results = pose_model(frame)
-        object_results = object_model(frame)
 
         # Create a copy of the frame to draw on
         display_frame = frame.copy()
@@ -108,16 +111,11 @@ def run_detection_and_pose_estimation(source=0, save_path='data', pose_model='yo
                                cv2.FONT_HERSHEY_SIMPLEX, 
                                1, (0, 255, 0), 2)
 
-        # Visualize the results with pose estimation
-        pose_annotated_frame = pose_results[0].plot()
-
-        # Visualize the results with object detection
+        # Run object detection only for the 'baby' class
+        object_results = object_model(frame, classes=[0])  # Only detect 'baby' class
         object_annotated_frame = object_results[0].plot()
 
-        # Combine the annotated frames
-        combined_frame = cv2.hconcat([pose_annotated_frame, object_annotated_frame])
-
-        cv2.imshow('YOLOv8 Pose Estimation and Object Detection', combined_frame)
+        cv2.imshow('YOLOv8 Object Detection', object_annotated_frame)
 
         # Save pose data every 100 frames
         if frame_count % 100 == 0 and frame_count > 0:
@@ -128,7 +126,7 @@ def run_detection_and_pose_estimation(source=0, save_path='data', pose_model='yo
         frame_count += 1
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
-            # Save any remaining pose data
+            # Save any remaining data
             if pose_data:
                 with open(os.path.join(save_path, 'pose_data_final.json'), 'w') as f:
                     json.dump(pose_data, f, indent=4)
@@ -137,5 +135,4 @@ def run_detection_and_pose_estimation(source=0, save_path='data', pose_model='yo
     cap.release()
     cv2.destroyAllWindows()
 
-# Example usage
-run_detection_and_pose_estimation(source=0, save_path='pose_database', pose_model='yolov8n-pose.pt', object_model='yolov8s-detect-v2.pt')
+run_detection_and_pose_estimation(source="source\\vid1.mp4", save_path='data', pose_model='yolov8n-pose.pt', object_model='yolov8s-detect-v2.pt')
