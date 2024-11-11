@@ -1,3 +1,4 @@
+import os
 from ultralytics import YOLO
 import cv2
 import json
@@ -28,8 +29,6 @@ def convert_to_mediapipe_format(keypoints):
     """Convert YOLOv8 keypoints to MediaPipe format"""
     # Initialize MediaPipe format with 33 keypoints
     mediapipe_keypoints = []
-    
-    # Each keypoint will have x, y, z, visibility
     for i in range(33):
         mediapipe_keypoints.append({
             'x': 0,
@@ -37,7 +36,7 @@ def convert_to_mediapipe_format(keypoints):
             'z': 0,
             'visibility': 0
         })
-    
+
     # Map YOLO keypoints to MediaPipe format
     for yolo_idx, mp_idx in YOLO_TO_MEDIAPIPE.items():
         if yolo_idx < len(keypoints):
@@ -48,85 +47,95 @@ def convert_to_mediapipe_format(keypoints):
                 'z': 0.0,  # YOLO doesn't provide z-coordinate
                 'visibility': float(conf)
             }
-    
+
     return mediapipe_keypoints
 
+def run_detection_and_pose_estimation(source=0, save_path='data', pose_model='yolov8s-pose.pt', object_model='yolov8s.pt'):
+    """
+    Run YOLOv8 pose estimation and object detection on a video source and save the pose data to JSON files.
 
-model = YOLO('yolov8n-pose.pt') 
+    Parameters:
+    source (int or str): Video source, either a camera index (int) or a video file path (str)
+    save_path (str): Path to save the pose data JSON files
+    pose_model (str): Path to the YOLOv8 pose estimation model
+    object_model (str): Path to the YOLOv8 object detection model
+    """
+    os.makedirs(save_path, exist_ok=True)
 
-cap = cv2.VideoCapture(0)
+    pose_model = YOLO(pose_model)
+    object_model = YOLO(object_model)
+    cap = cv2.VideoCapture(source)
 
-frame_count = 0
-pose_data = {}
+    frame_count = 0
+    pose_data = {}
 
-while cap.isOpened():
-    success, frame = cap.read()
-    if not success:
-        print("Failed to grab frame")
-        break
-        
-    # Run pose estimation
-    results = model(frame)
-    
-    # Create a copy of the frame to draw on
-    display_frame = frame.copy()
-    
-    # Get the keypoints
-    if len(results) > 0:
-        # Store pose data for each person detected
-        for person_id, person_keypoints in enumerate(results[0].keypoints.data):
-            # Convert tensor to numpy array and normalize coordinates
-            h, w = frame.shape[:2]
-            keypoints = person_keypoints.cpu().numpy()
-            normalized_keypoints = [(x/w, y/h, conf) for x, y, conf in keypoints]
-            
-            # Convert to MediaPipe format
-            mediapipe_data = convert_to_mediapipe_format(normalized_keypoints)
-            
-            # Store in pose_data
-            if frame_count not in pose_data:
-                pose_data[frame_count] = {}
-            pose_data[frame_count][f"person_{person_id}"] = mediapipe_data
-            
-            # Get nose keypoint (or any other keypoint) to place the ID text
-            if len(keypoints) > 0:
-                nose_x, nose_y = int(keypoints[0][0]), int(keypoints[0][1])
-                # Draw person ID
-                cv2.putText(display_frame, f"ID: {person_id}", 
-                           (nose_x, nose_y - 30),  # Position above nose
-                           cv2.FONT_HERSHEY_SIMPLEX, 
-                           1, (0, 255, 0), 2)
-    
-    # Visualize the results with pose estimation
-    annotated_frame = results[0].plot()
-    
-    # Add the person IDs to the annotated frame
-    if len(results) > 0:
-        for person_id, person_keypoints in enumerate(results[0].keypoints.data):
-            keypoints = person_keypoints.cpu().numpy()
-            if len(keypoints) > 0:
-                nose_x, nose_y = int(keypoints[0][0]), int(keypoints[0][1])
-                cv2.putText(annotated_frame, f"ID: {person_id}", 
-                           (nose_x, nose_y - 30),
-                           cv2.FONT_HERSHEY_SIMPLEX, 
-                           1, (0, 255, 0), 2)
-    
-    cv2.imshow('YOLOv8 Pose Estimation', annotated_frame)
-    
-    # Save pose data every 100 frames
-    if frame_count % 100 == 0 and frame_count > 0:
-        with open(f'pose_data_{frame_count}.json', 'w') as f:
-            json.dump(pose_data, f, indent=4)
-        pose_data = {}  # Reset for next batch
-    
-    frame_count += 1
-    
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        # Save any remaining pose data
-        if pose_data:
-            with open(f'pose_data_final.json', 'w') as f:
+    while cap.isOpened():
+        success, frame = cap.read()
+        if not success:
+            print("Failed to grab frame")
+            break
+
+        # Run pose estimation and object detection
+        pose_results = pose_model(frame)
+        object_results = object_model(frame)
+
+        # Create a copy of the frame to draw on
+        display_frame = frame.copy()
+
+        # Get the keypoints
+        if len(pose_results) > 0:
+            # Store pose data for each person detected
+            for person_id, person_keypoints in enumerate(pose_results[0].keypoints.data):
+                # Convert tensor to numpy array and normalize coordinates
+                h, w = frame.shape[:2]
+                keypoints = person_keypoints.cpu().numpy()
+                normalized_keypoints = [(x/w, y/h, conf) for x, y, conf in keypoints]
+
+                # Convert to MediaPipe format
+                mediapipe_data = convert_to_mediapipe_format(normalized_keypoints)
+
+                # Store in pose_data
+                if frame_count not in pose_data:
+                    pose_data[frame_count] = {}
+                pose_data[frame_count][f"person_{person_id}"] = mediapipe_data
+
+                # Get nose keypoint (or any other keypoint) to place the ID text
+                if len(keypoints) > 0:
+                    nose_x, nose_y = int(keypoints[0][0]), int(keypoints[0][1])
+                    # Draw person ID
+                    cv2.putText(display_frame, f"ID: {person_id}", 
+                               (nose_x, nose_y - 30),  # Position above nose
+                               cv2.FONT_HERSHEY_SIMPLEX, 
+                               1, (0, 255, 0), 2)
+
+        # Visualize the results with pose estimation
+        pose_annotated_frame = pose_results[0].plot()
+
+        # Visualize the results with object detection
+        object_annotated_frame = object_results[0].plot()
+
+        # Combine the annotated frames
+        combined_frame = cv2.hconcat([pose_annotated_frame, object_annotated_frame])
+
+        cv2.imshow('YOLOv8 Pose Estimation and Object Detection', combined_frame)
+
+        # Save pose data every 100 frames
+        if frame_count % 100 == 0 and frame_count > 0:
+            with open(os.path.join(save_path, f'pose_data_{frame_count}.json'), 'w') as f:
                 json.dump(pose_data, f, indent=4)
-        break
+            pose_data = {}  # Reset for next batch
 
-cap.release()
-cv2.destroyAllWindows()
+        frame_count += 1
+
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            # Save any remaining pose data
+            if pose_data:
+                with open(os.path.join(save_path, 'pose_data_final.json'), 'w') as f:
+                    json.dump(pose_data, f, indent=4)
+            break
+
+    cap.release()
+    cv2.destroyAllWindows()
+
+# Example usage
+run_detection_and_pose_estimation(source=0, save_path='data', pose_model='yolov8s-pose.pt', object_model='yolov8s.pt')
