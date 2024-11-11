@@ -138,4 +138,4 @@ def run_detection_and_pose_estimation(source=0, save_path='data', pose_model='yo
     cv2.destroyAllWindows()
 
 # Example usage
-run_detection_and_pose_estimation(source=0, save_path='data', pose_model='yolov8s-pose.pt', object_model='yolov8s.pt')
+run_detection_and_pose_estimation(source=0, save_path='pose_database', pose_model='yolov8n-pose.pt', object_model='yolov8s-detect-v2.pt')
