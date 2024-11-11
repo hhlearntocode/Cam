@@ -66,7 +66,6 @@ def run_detection_and_pose_estimation(source="source\\vid1.mp4", save_path='data
     object_model = YOLO(object_model)
     cap = cv2.VideoCapture(source)
 
-    # Set the window size to 800x600
     cv2.namedWindow('YOLOv8 Object Detection', cv2.WINDOW_NORMAL)
     cv2.resizeWindow('YOLOv8 Object Detection', 800, 600)
 
@@ -79,33 +78,24 @@ def run_detection_and_pose_estimation(source="source\\vid1.mp4", save_path='data
             print("Failed to grab frame")
             break
 
-        # Run pose estimation
         pose_results = pose_model(frame)
 
-        # Create a copy of the frame to draw on
         display_frame = frame.copy()
 
-        # Get the keypoints
         if len(pose_results) > 0:
-            # Store pose data for each person detected
             for person_id, person_keypoints in enumerate(pose_results[0].keypoints.data):
-                # Convert tensor to numpy array and normalize coordinates
                 h, w = frame.shape[:2]
                 keypoints = person_keypoints.cpu().numpy()
                 normalized_keypoints = [(x/w, y/h, conf) for x, y, conf in keypoints]
 
-                # Convert to MediaPipe format
                 mediapipe_data = convert_to_mediapipe_format(normalized_keypoints)
 
-                # Store in pose_data
                 if frame_count not in pose_data:
                     pose_data[frame_count] = {}
                 pose_data[frame_count][f"person_{person_id}"] = mediapipe_data
 
-                # Get nose keypoint (or any other keypoint) to place the ID text
                 if len(keypoints) > 0:
                     nose_x, nose_y = int(keypoints[0][0]), int(keypoints[0][1])
-                    # Draw person ID
                     cv2.putText(display_frame, f"ID: {person_id}", 
                                (nose_x, nose_y - 30),  # Position above nose
                                cv2.FONT_HERSHEY_SIMPLEX, 
@@ -135,4 +125,4 @@ def run_detection_and_pose_estimation(source="source\\vid1.mp4", save_path='data
     cap.release()
     cv2.destroyAllWindows()
 
-run_detection_and_pose_estimation(source="source\\vid1.mp4", save_path='data', pose_model='yolov8n-pose.pt', object_model='yolov8s-detect-v2.pt')
+run_detection_and_pose_estimation(source="source//vid1.mp4", save_path='pose_database', pose_model='yolov8n-pose.pt', object_model='yolov8s-detect-v4.pt')
