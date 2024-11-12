@@ -5,6 +5,46 @@ import argparse
 import os
 import json
 from datetime import datetime
+import requests
+import threading
+import queue
+import time
+
+TOKEN = "7594613412:AAEhZd1L2fh7te_JBbY-BzN4hJttQRTBR40"
+CHAT_ID = "7755309376"
+
+# Queue to handle messages in a separate thread
+message_queue = queue.Queue()
+MAX_MESSAGES = 3
+COOLDOWN_PERIOD = 50  # seconds
+
+def sendMessage(mess):
+    """Send message to Telegram chat"""
+    url = f"http://api.telegram.org/bot{TOKEN}/sendMessage?chat_id={CHAT_ID}&text={mess}"
+    res = requests.get(url)
+    return res
+
+def message_sender():
+    """Thread function to send messages with control for max messages"""
+    message_count = 0
+    last_reset_time = time.time()
+
+    while True:
+        # Check cooldown to reset count
+        if time.time() - last_reset_time > COOLDOWN_PERIOD:
+            message_count = 0
+            last_reset_time = time.time()
+
+        # Process messages if count allows
+        if not message_queue.empty() and message_count < MAX_MESSAGES:
+            mess = message_queue.get()
+            sendMessage(mess)
+            message_count += 1
+        else:
+            time.sleep(1)  # wait if at max messages
+
+# Start message sending thread
+threading.Thread(target=message_sender, daemon=True).start()
 
 def save_pose_data(pose_data, filepath):
     """Save pose data to a JSON file"""
@@ -47,10 +87,19 @@ def draw_pose_info(frame, results):
     for person_id, keypoints in enumerate(results[0].keypoints.data):
         # Convert keypoints to numpy array
         keypoints_np = keypoints.cpu().numpy()
+
+        # Skip if there are no keypoints
+        if keypoints_np.size == 0:
+            continue  
         
         # Calculate average confidence
         confidences = keypoints_np[:, 2]
         avg_conf = float(np.mean(confidences[confidences > 0])) if len(confidences) > 0 else 0
+
+        # If average confidence is high, send message
+        if avg_conf > 0.85:
+            # sendMessage(f"Person {person_id} detected with high confidence: {avg_conf:.2f}")
+            message_queue.put(f"Person {person_id} detected with high confidence: {avg_conf:.2f}")
         
         # Store person data
         person_data = {
@@ -94,7 +143,7 @@ def draw_pose_info(frame, results):
 
 def main():
     parser = argparse.ArgumentParser(description='YOLO Pose Detection Visualization')
-    parser.add_argument('--source', type=str, default='0',
+    parser.add_argument('--source', type=str, default='source/video2.mp4',
                       help='Source for video capture (0 for webcam or video path)')
     parser.add_argument('--model', type=str, default='yolov8n-pose.pt',
                       help='Path to YOLO pose model')
@@ -150,6 +199,7 @@ def main():
             batch_pose_data = []  # Clear the batch after saving
         
         # Display frame
+        frame = cv2.resize(frame, (1280, 720))  # Resize to 1280x720
         cv2.imshow('YOLO Pose Detection', frame)
         
         frame_count += 1

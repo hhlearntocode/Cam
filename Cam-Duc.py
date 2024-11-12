@@ -50,7 +50,7 @@ def convert_to_mediapipe_format(keypoints):
 
     return mediapipe_keypoints
 
-def run_detection_and_pose_estimation(source="source\\vid1.mp4", save_path='data', pose_model='yolov8n-pose.pt', object_model='yolov8s-detect-v2.pt'):
+def run_detection_and_pose_estimation(source="source/vid1.mp4", save_path='data', pose_model='yolov8n-pose.pt', object_model='yolov8s-detect-v2.pt'):
     """
     Run YOLOv8 pose estimation and object detection on a video source and save the pose data to JSON files.
 
@@ -125,4 +125,4 @@ def run_detection_and_pose_estimation(source="source\\vid1.mp4", save_path='data
     cap.release()
     cv2.destroyAllWindows()
 
-run_detection_and_pose_estimation(source="source//vid1.mp4", save_path='pose_database', pose_model='yolov8n-pose.pt', object_model='yolov8s-detect-v4.pt')
+run_detection_and_pose_estimation(source="source/vid1.mp4", save_path='pose_database', pose_model='yolov8n-pose.pt', object_model='yolov8s-detect-v2.pt')
