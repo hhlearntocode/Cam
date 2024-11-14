@@ -21,14 +21,14 @@ def sendMessage(mess):
     res = requests.get(url)
     return res
 
-# if __name__ == "__main__":
+if __name__ == "__main__":
 
-#     mes = receiveMess()
-#     cnt = 0
+    mes = receiveMess()
+    cnt = 0
 
-#     while checkMessing(mes): 
-#         res = sendMessage(mes)
-#         cnt += 1
-#         if cnt == 10: break
-#         mes = receiveMess()
-#         print(res.json())
+    while checkMessing(mes): 
+        res = sendMessage(mes)
+        cnt += 1
+        if cnt == 10: break
+        mes = receiveMess()
+        print(res.json())

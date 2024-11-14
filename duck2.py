@@ -5,6 +5,7 @@ import queue
 import threading
 import time
 import requests
+import math
 
 # Telegram Bot Setup
 TOKEN = "7594613412:AAEhZd1L2fh7te_JBbY-BzN4hJttQRTBR40"
@@ -44,7 +45,7 @@ def message_sender():
 threading.Thread(target=message_sender, daemon=True).start()
 
 # Load the YOLO model
-model = YOLO('yolov8s-detect-upfront.pt')
+model = YOLO('best(1).pt')
 
 # Video input
 input_video_path = 'source/fall3.mp4'  # Path to your input video
@@ -65,6 +66,23 @@ cv2.resizeWindow('Pupil Detection', 1280, 720)
 tracked_objects = {}
 next_id = 0  # To keep track of the next unique ID
 
+def calculate_iou(box1, box2):
+    """Calculate Intersection over Union (IoU) of two boxes"""
+    x1, y1, x2, y2 = box1
+    x1_p, y1_p, x2_p, y2_p = box2
+
+    inter_x1 = max(x1, x1_p)
+    inter_y1 = max(y1, y1_p)
+    inter_x2 = min(x2, x2_p)
+    inter_y2 = min(y2, y2_p)
+
+    inter_area = max(0, inter_x2 - inter_x1 + 1) * max(0, inter_y2 - inter_y1 + 1)
+    box1_area = (x2 - x1 + 1) * (y2 - y1 + 1)
+    box2_area = (x2_p - x1_p + 1) * (y2_p - y1_p + 1)
+
+    iou = inter_area / float(box1_area + box2_area - inter_area)
+    return iou
+
 def assign_id_and_detect_fall(boxes):
     global next_id, tracked_objects
     new_tracked_objects = {}
@@ -73,22 +91,28 @@ def assign_id_and_detect_fall(boxes):
         x1, y1, x2, y2 = map(int, box.xyxy[0])
         center_y = (y1 + y2) // 2
 
-        # Look for an existing object to update based on proximity
-        assigned = False
-        for obj_id, (prev_center_y, _, fall_status) in tracked_objects.items():
-            if abs(center_y - prev_center_y) < 50:  # If within range, consider it the same object
-                new_fall_status = detect_falling(prev_center_y, center_y)
-                new_tracked_objects[obj_id] = (center_y, (x1, y1, x2, y2), new_fall_status)
+        best_match_id = None
+        best_iou = 0.3  # IoU threshold for matching
 
-                # Send message if falling is detected
-                if new_fall_status and not fall_status:  # Check if it's a new fall event
-                    message_queue.put(f"Alert: Child ID {obj_id} is falling!")
+        # Match detected box with existing tracked objects based on IoU
+        for obj_id, (_, prev_box, fall_status) in tracked_objects.items():
+            iou = calculate_iou((x1, y1, x2, y2), prev_box)
+            if iou > best_iou:
+                best_iou = iou
+                best_match_id = obj_id
 
-                assigned = True
-                break
-        
-        # If no existing object matched, create a new one
-        if not assigned:
+        # If a matching ID is found, update its position
+        if best_match_id is not None:
+            prev_center_y = tracked_objects[best_match_id][0]
+            new_fall_status = detect_falling(prev_center_y, center_y)
+            new_tracked_objects[best_match_id] = (center_y, (x1, y1, x2, y2), new_fall_status)
+
+            # Send message if falling is detected
+            if new_fall_status and not fall_status:  # Check if it's a new fall event
+                message_queue.put(f"Alert: Child ID {best_match_id} is falling!")
+
+        else:
+            # Create a new ID if no match found
             new_tracked_objects[next_id] = (center_y, (x1, y1, x2, y2), False)
             next_id += 1
 
