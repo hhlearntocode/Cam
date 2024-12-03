@@ -1,128 +1,241 @@
-import os
-from ultralytics import YOLO
 import cv2
-import json
+import torch
 import numpy as np
+from ultralytics import YOLO
+from torchvision.models import mobilenet_v3_small, MobileNetV3
+import torch.nn as nn
+import torch.nn.functional as F
+from threading import Thread
+from queue import Queue
+import time
+import os
 
-# YOLOv8 keypoints to MediaPipe mapping
-YOLO_TO_MEDIAPIPE = {
-    0: 0,    # nose
-    1: 7,    # left_eye
-    2: 8,    # right_eye
-    3: 3,    # left_ear
-    4: 6,    # right_ear
-    5: 11,   # left_shoulder
-    6: 12,   # right_shoulder
-    7: 13,   # left_elbow
-    8: 14,   # right_elbow
-    9: 15,   # left_wrist
-    10: 16,  # right_wrist
-    11: 23,  # left_hip
-    12: 24,  # right_hip
-    13: 25,  # left_knee
-    14: 26,  # right_knee
-    15: 27,  # left_ankle
-    16: 28,  # right_ankle
-}
 
-def convert_to_mediapipe_format(keypoints):
-    """Convert YOLOv8 keypoints to MediaPipe format"""
-    # Initialize MediaPipe format with 33 keypoints
-    mediapipe_keypoints = []
-    for i in range(33):
-        mediapipe_keypoints.append({
-            'x': 0,
-            'y': 0,
-            'z': 0,
-            'visibility': 0
-        })
+class LightweightViolenceDetector(nn.Module):
+    def __init__(self, num_classes=2, checkpoint_path='best_mobilenet_v3.pth'):
+        super().__init__()
+        # Use MobileNetV3 as base model for efficiency
+        self.backbone = mobilenet_v3_small(pretrained=False)  # Keep pretrained=True
+        
+        # Correctly determine the last channel size
+        last_channel = self.backbone.classifier[0].in_features
+        
+        # Modify the classifier for violence detection BEFORE loading checkpoint
+        self.backbone.classifier = nn.Sequential(
+            nn.Linear(last_channel, 512),
+            nn.ReLU(inplace=True),
+            nn.Dropout(0.2),
+            nn.Linear(512, num_classes)
+        )
+        
+        # Load checkpoint
+        if os.path.exists(checkpoint_path):
+            self.load_checkpoint(checkpoint_path)
+        
+    def load_checkpoint(self, checkpoint_path):
+        try:
+            # Load the checkpoint
+            checkpoint = torch.load(checkpoint_path, map_location='cpu')
+            
+            # Handle different checkpoint formats
+            state_dict = checkpoint.get('model_state_dict', checkpoint)
+            
+            # Remove any 'model.' or 'backbone.' prefix if present
+            corrected_state_dict = {}
+            for k, v in state_dict.items():
+                if k.startswith('model.'):
+                    corrected_state_dict[k.replace('model.', '')] = v
+                elif k.startswith('backbone.'):
+                    corrected_state_dict[k.replace('backbone.', '')] = v
+                else:
+                    corrected_state_dict[k] = v
+            
+            # Load the state dict
+            self.load_state_dict(corrected_state_dict, strict=False)
+            print("Checkpoint loaded successfully!")
+        except Exception as e:
+            print(f"Error loading checkpoint: {e}")
+            
+    def forward(self, x):
+        return self.backbone(x)
 
-    # Map YOLO keypoints to MediaPipe format
-    for yolo_idx, mp_idx in YOLO_TO_MEDIAPIPE.items():
-        if yolo_idx < len(keypoints):
-            x, y, conf = keypoints[yolo_idx]
-            mediapipe_keypoints[mp_idx] = {
-                'x': float(x),
-                'y': float(y),
-                'z': 0.0,  # YOLO doesn't provide z-coordinate
-                'visibility': float(conf)
-            }
+class RealTimeViolenceDetector:
+    def __init__(self, 
+                child_detection_model='yolov8s-detect-upfront.pt',
+                violence_model_path='best_mobilenet_v3.pth',
+                input_resolution=(224, 224),
+                confidence_threshold=0.7,
+                max_queue_size=30):
+        # Device configuration
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        
+        # Models
+        self.child_detector = YOLO(child_detection_model)
+        
+        # Violence detection model
+        self.violence_model = LightweightViolenceDetector(
+            num_classes=2, 
+            checkpoint_path=violence_model_path
+        )
+        
+        self.violence_model.to(self.device)
+        self.violence_model.eval()
+        
+        # Processing parameters
+        self.input_resolution = input_resolution
+        self.confidence_threshold = confidence_threshold
+        
+        # Frame processing queue
+        self.frame_queue = Queue(maxsize=max_queue_size)
+        self.result_queue = Queue(maxsize=max_queue_size)
+        
+        # Processing flags
+        self.is_processing = True
 
-    return mediapipe_keypoints
+    def preprocess_frame(self, frame):
+        """
+        Preprocess frame for neural network input
+        """
+        # Resize frame
+        frame = cv2.resize(frame, self.input_resolution)
+        
+        # Convert to tensor
+        frame_tensor = torch.from_numpy(frame).permute(2, 0, 1).float() / 255.0
+        frame_tensor = frame_tensor.unsqueeze(0).to(self.device)
+        
+        return frame_tensor
+    
+    def enhance_image(self, frame):
+        """
+        Enhance image quality using basic image processing techniques.
+        
+        Args:
+            frame (numpy.ndarray): Input frame (BGR image).
+        
+        Returns:
+            numpy.ndarray: Enhanced frame.
+        """
+        # Convert to YUV color space for histogram equalization
+        yuv_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2YUV)
+        yuv_frame[:, :, 0] = cv2.equalizeHist(yuv_frame[:, :, 0])  # Equalize histogram on the Y channel
+        enhanced_frame = cv2.cvtColor(yuv_frame, cv2.COLOR_YUV2BGR)
+        
+        # Apply sharpening kernel
+        sharpening_kernel = np.array([[0, -1, 0], 
+                                    [-1, 5, -1], 
+                                    [0, -1, 0]])
+        enhanced_frame = cv2.filter2D(enhanced_frame, -1, sharpening_kernel)
+        
+        # Optionally apply noise reduction (e.g., bilateral filter)
+        enhanced_frame = cv2.bilateralFilter(enhanced_frame, d=9, sigmaColor=75, sigmaSpace=75)
+        
+        return enhanced_frame
 
-def run_detection_and_pose_estimation(source="source\\vid1.mp4", save_path='data', pose_model='yolov8n-pose.pt', object_model='yolov8s-detect-v2.pt'):
-    """
-    Run YOLOv8 pose estimation and object detection on a video source and save the pose data to JSON files.
+    def detect_children(self, frame):
+        """
+        Detect children in the frame using YOLO
+        """
+        results = self.child_detector(frame, classes=[0])  # Assuming 0 is child class
+        return len(results[0].boxes) > 0
 
-    Parameters:
-    source (int or str): Video source, either a camera index (int) or a video file path (str)
-    save_path (str): Path to save the pose data JSON files
-    pose_model (str): Path to the YOLOv8 pose estimation model
-    object_model (str): Path to the YOLOv8 object detection model
-    """
-    os.makedirs(save_path, exist_ok=True)
+    def detect_violence(self, frame_tensor):
+        """
+        Detect violence using lightweight model
+        """
+        with torch.no_grad():
+            outputs = self.violence_model(frame_tensor)
+            probabilities = F.softmax(outputs, dim=1)
+            violence_prob = probabilities[0][1]
+            
+        return violence_prob > self.confidence_threshold
 
-    pose_model = YOLO(pose_model)
-    object_model = YOLO(object_model)
-    cap = cv2.VideoCapture(source)
+    def frame_processing_thread(self):
+        """
+        Continuous frame processing thread
+        """
+        while self.is_processing:
+            if not self.frame_queue.empty():
+                frame, frame_time = self.frame_queue.get()
+                
+                # Check for children
+                if not self.detect_children(frame):
+                    continue
+                
+                # Preprocess frame
+                frame_tensor = self.preprocess_frame(frame)
+                
+                # Detect violence
+                is_violent = self.detect_violence(frame_tensor)
+                
+                if is_violent:
+                    # Put result in result queue
+                    self.result_queue.put((frame, frame_time))
 
-    cv2.namedWindow('YOLOv8 Object Detection', cv2.WINDOW_NORMAL)
-    cv2.resizeWindow('YOLOv8 Object Detection', 800, 600)
+    def process_video(self, video_path):
+        """
+        Process video in real-time
+        """
+        # Start processing thread
+        processing_thread = Thread(target=self.frame_processing_thread)
+        processing_thread.start()
+        
+        # Video capture
+        cap = cv2.VideoCapture(video_path)
+        
+        while cap.isOpened():
+            ret, frame = cap.read()
+            if not ret:
+                break
+            
+            # Get current timestamp
+            current_time = time.time()
+            
+            # Put frame in queue if not full
+            if not self.frame_queue.full():
+                self.frame_queue.put((frame, current_time))
+            
+            # Process results
+            if not self.result_queue.empty():
+                violent_frame, frame_time = self.result_queue.get()
+                self.save_violent_frame(violent_frame, frame_time)
+            
+            # Optional: Add a small delay to prevent overwhelming the system
+            time.sleep(0.01)
+        
+        # Stop processing
+        self.is_processing = False
+        processing_thread.join()
+        
+        cap.release()
 
-    frame_count = 0
-    pose_data = {}
+    def save_violent_frame(self, frame, timestamp):
+        """
+        Save violent frame with timestamp after enhancing the image quality.
+        """
+        # Enhance the image quality
+        enhanced_frame = self.enhance_image(frame)
+        
+        # Save the enhanced frame
+        output_dir = 'violent_frames'
+        os.makedirs(output_dir, exist_ok=True)
+        
+        filename = f'violent_frame_{timestamp}.jpg'
+        filepath = os.path.join(output_dir, filename)
+        
+        cv2.imwrite(filepath, enhanced_frame)
+        print(f"Violent frame detected and saved: {filename}")
 
-    while cap.isOpened():
-        success, frame = cap.read()
-        if not success:
-            print("Failed to grab frame")
-            break
 
-        pose_results = pose_model(frame)
+def main():
+    detector = RealTimeViolenceDetector(
+        child_detection_model='yolov8s-detect-upfront.pt',
+        violence_model_path='best_mobilenet_v3.pth',  
+        input_resolution=(224, 224),
+        confidence_threshold=0.2
+    )
+    
+    detector.process_video(0)
 
-        display_frame = frame.copy()
+if __name__ == "__main__":
+    main()
 
-        if len(pose_results) > 0:
-            for person_id, person_keypoints in enumerate(pose_results[0].keypoints.data):
-                h, w = frame.shape[:2]
-                keypoints = person_keypoints.cpu().numpy()
-                normalized_keypoints = [(x/w, y/h, conf) for x, y, conf in keypoints]
-
-                mediapipe_data = convert_to_mediapipe_format(normalized_keypoints)
-
-                if frame_count not in pose_data:
-                    pose_data[frame_count] = {}
-                pose_data[frame_count][f"person_{person_id}"] = mediapipe_data
-
-                if len(keypoints) > 0:
-                    nose_x, nose_y = int(keypoints[0][0]), int(keypoints[0][1])
-                    cv2.putText(display_frame, f"ID: {person_id}", 
-                               (nose_x, nose_y - 30),  # Position above nose
-                               cv2.FONT_HERSHEY_SIMPLEX, 
-                               1, (0, 255, 0), 2)
-
-        # Run object detection only for the 'baby' class
-        object_results = object_model(frame, classes=[0])  # Only detect 'baby' class
-        object_annotated_frame = object_results[0].plot()
-
-        cv2.imshow('YOLOv8 Object Detection', object_annotated_frame)
-
-        # Save pose data every 100 frames
-        if frame_count % 100 == 0 and frame_count > 0:
-            with open(os.path.join(save_path, f'pose_data_{frame_count}.json'), 'w') as f:
-                json.dump(pose_data, f, indent=4)
-            pose_data = {}  # Reset for next batch
-
-        frame_count += 1
-
-        if cv2.waitKey(1) & 0xFF == ord('q'):
-            # Save any remaining data
-            if pose_data:
-                with open(os.path.join(save_path, 'pose_data_final.json'), 'w') as f:
-                    json.dump(pose_data, f, indent=4)
-            break
-
-    cap.release()
-    cv2.destroyAllWindows()
-
-run_detection_and_pose_estimation(source="source//vid1.mp4", save_path='pose_database', pose_model='yolov8n-pose.pt', object_model='yolov8s-detect-v4.pt')
