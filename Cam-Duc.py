@@ -64,7 +64,8 @@ class RealTimeViolenceDetector:
                 child_detection_model='yolov8s-detect-upfront.pt',
                 violence_model_path='best_mobilenet_v3.pth',
                 input_resolution=(224, 224),
-                confidence_threshold=0.7,
+                detect_confidence_threshold=0.7,
+                violence_confidence_threshold=0.5,
                 max_queue_size=30):
         # Device configuration
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -83,7 +84,8 @@ class RealTimeViolenceDetector:
         
         # Processing parameters
         self.input_resolution = input_resolution
-        self.confidence_threshold = confidence_threshold
+        self.child_confidence_threshold = detect_confidence_threshold
+        self.violence_confidence_threshold = violence_confidence_threshold
         
         # Frame processing queue
         self.frame_queue = Queue(maxsize=max_queue_size)
@@ -133,21 +135,21 @@ class RealTimeViolenceDetector:
 
     def detect_children(self, frame):
         """
-        Detect children in the frame using YOLO
+        Detect children in the frame using YOLO with configurable confidence threshold
         """
-        results = self.child_detector(frame, classes=[0])  # Assuming 0 is child class
+        results = self.child_detector(frame, conf=self.child_confidence_threshold, classes=[0]) 
         return len(results[0].boxes) > 0
 
     def detect_violence(self, frame_tensor):
         """
-        Detect violence using lightweight model
+        Detect violence using lightweight model with configurable confidence threshold
         """
         with torch.no_grad():
             outputs = self.violence_model(frame_tensor)
             probabilities = F.softmax(outputs, dim=1)
             violence_prob = probabilities[0][1]
             
-        return violence_prob > self.confidence_threshold
+        return violence_prob > self.violence_confidence_threshold
 
     def frame_processing_thread(self):
         """
@@ -158,7 +160,7 @@ class RealTimeViolenceDetector:
                 frame, frame_time = self.frame_queue.get()
                 
                 # Check for children
-                if not self.detect_children(frame):
+                if self.detect_children(frame):
                     continue
                 
                 # Preprocess frame
@@ -231,10 +233,11 @@ def main():
         child_detection_model='yolov8s-detect-upfront.pt',
         violence_model_path='best_mobilenet_v3.pth',  
         input_resolution=(224, 224),
-        confidence_threshold=0.2
+        detect_confidence_threshold=0.7,
+        violence_confidence_threshold=0.3
     )
     
-    detector.process_video(0)
+    detector.process_video("violence-dataset/fight1.mp4")
 
 if __name__ == "__main__":
     main()
