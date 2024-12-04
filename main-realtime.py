@@ -31,7 +31,7 @@ class ViolenceMonitor:
                 )
                 
                 # Prepare audio analysis results
-                audio_result = {
+                audio_elements = {
                     'detected_sound': detected_sound,
                     'scores': scores,
                     'text': text,
@@ -39,6 +39,8 @@ class ViolenceMonitor:
                     'violence_sound': violence_sound
                 }
                 
+                audio_result = audio_processor.analyze_violence_rate(audio_elements["detected"], audio_elements["scores"], audio_elements["text"])
+
                 # Put results in the queue
                 self.audio_queue.put(audio_result)
                 
@@ -113,22 +115,28 @@ class ViolenceMonitor:
         with self.print_lock:
             print("Analyzing violence indicators:")
             violence_weight = 0
-
+            # Audio violence calculation (0.3 weight)
             if audio_data:
-                # Calculate audio violence weight (0.3 of total weight)
-                audio_violence_weight = 0.3 * self.calculate_audio_violence_weight(audio_data)
-                violence_weight += audio_violence_weight
-            
+                print("Video Analysis:")
+                print("  Video Detection:", audio_data.get("label"))
+                print("  Confidence Score:", audio_data.get("confidence_score"))
+                if audio_data.get("label") == "Violence" :
+                    violence_weight += 0.3*audio_data.get("confidence_score")
+                else:
+                    violence_weight -= 0.3*audio_data.get("confidence_score")
+
             # Video violence calculation (0.7 weight)
             if video_data:
                 print("Video Analysis:")
-                print("  Video Violence Detection:", video_data.get("confidence_score"))
-                
-            # Overall violence assessment
-            print(f"Total Violence Weight: {violence_weight}")
-            
+                print("  Video Detection:", video_data.get("label"))
+                print("  Confidence Score:", video_data.get("confidence_score"))
+                if video_data.get("label") == "Violence":
+                    violence_weight += 0.7*video_data.get("confidence_score")
+                else:
+                    violence_weight -= 0.7*video_data.get("confidence_score")
+
             # Violence threshold and action logic
-            if violence_weight > 0.5:
+            if violence_weight > 0.7:
                 print("HIGH VIOLENCE RISK DETECTED!")
                 self.trigger_violence_alert(violence_weight, audio_data, video_data)
             elif violence_weight > 0.2:
