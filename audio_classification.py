@@ -9,7 +9,6 @@ from vosk import Model, KaldiRecognizer
 import json
 from transformers import Wav2Vec2Processor, Wav2Vec2ForCTC
 import torch
-
 class audioProcess:
     def __init__(self):
         self.yamnet_model = hub.load('https://tfhub.dev/google/yamnet/1')
@@ -87,19 +86,31 @@ class audioProcess:
         return detected_keywords, detected_sound
 
     def analyze_violence_rate(self, labels, scores, text):
-        weight_1 = self.weight_audio_calculating(labels, scores)
-        weight_2 = self.weight_keyword_calculating(text)
-        weight = weight_1 + weight_2
-        if weight_1 > 0 and weight_2 == 0:
-            if(label in ["Child speech, kid speaking", "Children shouting", "Crying, sobbing", "Baby cry, infant cry"] for label in labels):
+        weight_audio = self.weight_audio_calculating(labels, scores)
+        weight_keywords = self.weight_keyword_calculating(text)
+        total_weight = weight_audio + weight_keywords
+        if weight_audio > 0 and weight_keywords == 0:
+            if any(label in ["Child speech, kid speaking", "Children shouting", "Crying, sobbing", "Baby cry, infant cry"] for label in labels):
                 print("Trẻ em đang khóc trong môi trường học tập")
-                if(label in ["Slap, smack", "Breaking", "Glass", "Wail, moan","Smash, crash"] for label in labels):
-                    print("Có dấu hiệu hành vi bạo hành trẻ em, xin vui lòng kiểm tra camera")
-        elif weight_1 > 2 and weight_2 > 0:
+            if any(label in ["Slap, smack", "Breaking", "Glass", "Wail, moan", "Smash, crash"] for label in labels):
+                print("Có dấu hiệu hành vi bạo hành trẻ em, xin vui lòng kiểm tra camera")
+        
+        elif weight_keywords > 0 and weight_audio == 0:
             print("Có những lời nói thô lỗ trong môi trường học tập của trẻ em")
+        
+        elif weight_audio > 0 and weight_keywords > 0:
             print("Trẻ em đang bị bạo hành, xin vui lòng kiểm tra camera")
-        else: 
-            print(" ")
+        
+        else:
+            print("Không phát hiện bạo lực")
+
+        # Chuẩn hóa score về thang điểm 0-1
+        max_audio_weight = max(self.violence_labels_weight.values())  # Trọng số lớn nhất của âm thanh
+        max_keyword_weight = max(self.violence_keywords_weight.values())  # Trọng số lớn nhất của từ khóa
+        normalized_score = total_weight / (max_audio_weight + max_keyword_weight)
+        
+        return normalized_score
+
 
 
     def record_and_predict(self, duration=5, sr=16000, device_port = 1):
