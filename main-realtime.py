@@ -27,7 +27,7 @@ class ViolenceMonitor:
                 # Record and predict audio for 10 seconds
                 detected_sound, scores, text, violence_keywords, violence_sound = audio_processor.record_and_predict(
                     duration=10, 
-                    device_port=2
+                    device_port=1
                 )
                 
                 # Prepare audio analysis results
