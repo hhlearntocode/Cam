@@ -23,7 +23,7 @@ class ViolenceMonitor:
         """
         audio_processor = audioProcess()
         while not self.stop_event.is_set():
-            try:
+            # try:
                 # Record and predict audio for 10 seconds
                 detected_sound, scores, text, violence_keywords, violence_sound = audio_processor.record_and_predict(
                     duration=10, 
@@ -39,7 +39,7 @@ class ViolenceMonitor:
                     'violence_sound': violence_sound
                 }
                 
-                audio_result = audio_processor.analyze_violence_rate(audio_elements["detected"], audio_elements["scores"], audio_elements["text"])
+                audio_result = audio_processor.analyze_violence_rate(audio_elements["detected_sound"], audio_elements["scores"], audio_elements["text"])
 
                 # Put results in the queue
                 self.audio_queue.put(audio_result)
@@ -47,11 +47,11 @@ class ViolenceMonitor:
                 # Small delay to prevent overwhelming the queue
                 time.sleep(1)
             
-            except Exception as e:
-                with self.print_lock:
-                    print(f"Error in audio thread: {e}")
-                # Break the loop or continue based on your error handling strategy
-                break
+            # except Exception as e:
+            #     with self.print_lock:
+            #         print(f"Error in audio thread: {e}")
+            #     # Break the loop or continue based on your error handling strategy
+            #     break
 
     def video_thread(self):
         """
