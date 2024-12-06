@@ -2,11 +2,9 @@ import sounddevice as sd
 import numpy as np
 import tensorflow as tf
 import tensorflow_hub as hub
-import librosa
+import soundfile
 import pandas as pd
 from scipy.io.wavfile import write
-from vosk import Model, KaldiRecognizer
-import json
 from transformers import Wav2Vec2Processor, Wav2Vec2ForCTC
 import torch
 class audioProcess:
@@ -124,4 +122,48 @@ class audioProcess:
             detected.append(class_name)
         text = self.speech_to_text_from_waveform(waveform, sr=sr)
         detected_keywords, detected_sound = self.analyze_text_audio(text, detected)
+        return detected, scores, text, detected_keywords, detected_sound
+    
+    def wavPrediction(self, file_path, sr=16000):
+        """
+        Predict audio events and extract information from an audio file.
+        
+        Args:
+            file_path (str): Path to the audio file (.wav format).
+            sr (int): Sample rate to resample the audio (default: 16000).
+        
+        Returns:
+            detected (list): List of detected audio event names.
+            scores (ndarray): Scores associated with each detected event.
+            text (str): Transcribed speech text from the audio.
+            detected_keywords (list): Keywords extracted from the transcribed text.
+            detected_sound (list): Sounds detected in the audio.
+        """
+        # Load audio file
+        waveform, file_sr = soundfile.read(file_path)
+        
+        # If stereo audio, convert to mono
+        if len(waveform.shape) > 1:
+            waveform = np.mean(waveform, axis=1)  # Average across channels
+        
+        # Resample audio if needed
+        if file_sr != sr:
+            import librosa
+            waveform = librosa.resample(waveform, orig_sr=file_sr, target_sr=sr)
+        
+        # Run YAMNet prediction
+        predictions, scores = self.predict_with_yamnet(waveform, sr=sr)
+        
+        # Map predicted indices to class names
+        detected = []
+        for i in predictions.numpy():
+            class_name = str(self.labels[self.labels['index'] == i]['display_name'].values[0])
+            detected.append(class_name)
+        
+        # Perform speech-to-text on the audio
+        text = self.speech_to_text_from_waveform(waveform, sr=sr)
+        
+        # Analyze the detected audio events and transcribed text
+        detected_keywords, detected_sound = self.analyze_text_audio(text, detected)
+        
         return detected, scores, text, detected_keywords, detected_sound

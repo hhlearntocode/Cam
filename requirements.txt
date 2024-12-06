@@ -1,0 +1,17 @@
+tensorflow 
+tensorflow-hub 
+numpy 
+matplotlib
+librosa
+soundfile
+scipy
+IPython
+transformers
+torchaudio
+torch
+streamlit
+ultralytics
+opencv-python
+sounddevice
+pandas
+moviepy
