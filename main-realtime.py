@@ -23,15 +23,15 @@ class ViolenceMonitor:
         """
         audio_processor = audioProcess()
         while not self.stop_event.is_set():
-            try:
+            # try:
                 # Record and predict audio for 10 seconds
                 detected_sound, scores, text, violence_keywords, violence_sound = audio_processor.record_and_predict(
                     duration=10, 
-                    device_port=2
+                    device_port=1
                 )
                 
                 # Prepare audio analysis results
-                audio_result = {
+                audio_elements = {
                     'detected_sound': detected_sound,
                     'scores': scores,
                     'text': text,
@@ -39,17 +39,19 @@ class ViolenceMonitor:
                     'violence_sound': violence_sound
                 }
                 
+                audio_result = audio_processor.analyze_violence_rate(audio_elements["detected_sound"], audio_elements["scores"], audio_elements["text"])
+
                 # Put results in the queue
                 self.audio_queue.put(audio_result)
                 
                 # Small delay to prevent overwhelming the queue
                 time.sleep(1)
             
-            except Exception as e:
-                with self.print_lock:
-                    print(f"Error in audio thread: {e}")
-                # Break the loop or continue based on your error handling strategy
-                break
+            # except Exception as e:
+            #     with self.print_lock:
+            #         print(f"Error in audio thread: {e}")
+            #     # Break the loop or continue based on your error handling strategy
+            #     break
 
     def video_thread(self):
         """
@@ -113,22 +115,28 @@ class ViolenceMonitor:
         with self.print_lock:
             print("Analyzing violence indicators:")
             violence_weight = 0
-
+            # Audio violence calculation (0.3 weight)
             if audio_data:
-                # Calculate audio violence weight (0.3 of total weight)
-                audio_violence_weight = 0.3 * self.calculate_audio_violence_weight(audio_data)
-                violence_weight += audio_violence_weight
-            
+                print("Video Analysis:")
+                print("  Video Detection:", audio_data.get("label"))
+                print("  Confidence Score:", audio_data.get("confidence_score"))
+                if audio_data.get("label") == "Violence" :
+                    violence_weight += 0.3*audio_data.get("confidence_score")
+                else:
+                    violence_weight -= 0.3*audio_data.get("confidence_score")
+
             # Video violence calculation (0.7 weight)
             if video_data:
                 print("Video Analysis:")
-                print("  Video Violence Detection:", video_data.get("confidence_score"))
-                
-            # Overall violence assessment
-            print(f"Total Violence Weight: {violence_weight}")
-            
+                print("  Video Detection:", video_data.get("label"))
+                print("  Confidence Score:", video_data.get("confidence_score"))
+                if video_data.get("label") == "Violence":
+                    violence_weight += 0.7*video_data.get("confidence_score")
+                else:
+                    violence_weight -= 0.7*video_data.get("confidence_score")
+
             # Violence threshold and action logic
-            if violence_weight > 0.5:
+            if violence_weight > 0.7:
                 print("HIGH VIOLENCE RISK DETECTED!")
                 self.trigger_violence_alert(violence_weight, audio_data, video_data)
             elif violence_weight > 0.2:

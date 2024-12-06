@@ -107,8 +107,16 @@ class audioProcess:
         max_keyword_weight = max(self.violence_keywords_weight.values())  # Trọng số lớn nhất của từ khóa
         normalized_score = total_weight / (max_audio_weight + max_keyword_weight)
         
-        return normalized_score
-
+        if normalized_score > 0.2:
+            return {
+                "label" : "Violence",
+                "confidence_score" : float(normalized_score)
+            }
+        else:
+            return {
+                "label" : "NonViolence",
+                "confidence_score" : float(normalized_score)
+            }
 
 
     def record_and_predict(self, duration=5, sr=16000, device_port = 1):
