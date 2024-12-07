@@ -38,7 +38,7 @@ class RealTimeViolenceDetector:
         # Read from the video file.
         video_reader = cv2.VideoCapture(video_file_path)
 
-        # Track consecutive violence frames
+        # Track consecutive violence frames``
         consecutive_violence_frames = 0
         violence_frame_indices = []
 
@@ -46,15 +46,16 @@ class RealTimeViolenceDetector:
         original_video_width = int(video_reader.get(cv2.CAP_PROP_FRAME_WIDTH))
         original_video_height = int(video_reader.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
-        # # VideoWriter to store the output video in the disk.
-        video_writer = cv2.VideoWriter(output_file_path, cv2.VideoWriter_fourcc('m', 'p', '4', 'v'),
-                                         video_reader.get(cv2.CAP_PROP_FPS), (original_video_width, original_video_height))
+        # VideoWriter to store the output video in the disk.
+        video_writer = cv2.VideoWriter(output_file_path, cv2.VideoWriter_fourcc(*'mp4v'),
+                                        video_reader.get(cv2.CAP_PROP_FPS), (original_video_width, original_video_height))
 
         # Declare a queue to store video frames.
-        frames_queue = deque(maxlen = self.SEQUENCE_LENGTH)
+        frames_queue = deque(maxlen=self.SEQUENCE_LENGTH)
 
         # Frame counter to track current frame
         frame_counter = 0
+        violence_detected_info = None
 
         # Iterate until the video is accessed successfully.
         while video_reader.isOpened():
@@ -62,7 +63,7 @@ class RealTimeViolenceDetector:
 
             if not ok:
                 break
-            
+
             # Resize the Frame to fixed Dimensions.
             resized_frame = cv2.resize(frame, (self.IMAGE_HEIGHT, self.IMAGE_WIDTH))
 
@@ -75,54 +76,47 @@ class RealTimeViolenceDetector:
             # Check if the number of frames in the queue are equal to the fixed sequence length.
             if len(frames_queue) == self.SEQUENCE_LENGTH:
                 # Pass the normalized frames to the model and get the predicted probabilities.
-                predicted_labels_probabilities = self.MoBiLSTM_model.predict(np.expand_dims(frames_queue, axis = 0))[0]
+                predicted_labels_probabilities = self.MoBiLSTM_model.predict(np.expand_dims(frames_queue, axis=0))[0]
 
                 # Get the index of class with highest probability.
                 predicted_label = np.argmax(predicted_labels_probabilities)
 
                 # Get the class name using the retrieved index.
                 predicted_class_name = self.CLASSES_LIST[predicted_label]
-                
+
                 # Check for violence detection on individual frames
                 if predicted_class_name == "Violence":
                     consecutive_violence_frames += 1
                     violence_frame_indices.append(frame_counter)
-                    
+
                     # If 16 consecutive violence frames detected
-                    if consecutive_violence_frames == 16:
+                    if consecutive_violence_frames == 16 and violence_detected_info is None:
                         confidence_score = predicted_labels_probabilities[predicted_label]
-                        
+
                         # Save the violence frames
                         for idx, frame_idx in enumerate(violence_frame_indices):
-                            # Set video reader to the specific frame
                             video_reader.set(cv2.CAP_PROP_POS_FRAMES, frame_idx)
                             ok, violence_frame = video_reader.read()
-                            
                             if ok:
                                 violence_frame_path = os.path.join(
-                                    violence_frames_dir, 
+                                    violence_frames_dir,
                                     f'violence_frame_{frame_idx}.jpg'
                                 )
-                                # Debug print
-                                print(f"Saving violence frame {frame_idx} to: {violence_frame_path}")
                                 cv2.imwrite(violence_frame_path, violence_frame)
-                            else:
-                                print(f"Failed to read frame {frame_idx}")
-                        
-                        # Return detailed violence detection information
+
                         # Retrieve the final frame of violence detection
                         video_reader.set(cv2.CAP_PROP_POS_FRAMES, violence_frame_indices[-1])
                         ok, final_violence_frame = video_reader.read()
-                        
                         final_violence_frame_path = None
                         if ok:
                             final_violence_frame_path = os.path.join(
-                                violence_frames_dir, 
+                                violence_frames_dir,
                                 f'final_violence_frame_{violence_frame_indices[-1]}.jpg'
                             )
                             cv2.imwrite(final_violence_frame_path, final_violence_frame)
-                        
-                        return {
+
+                        # Save violence detection info
+                        violence_detected_info = {
                             'label': predicted_class_name,
                             'confidence_score': float(confidence_score),
                             'final_violence_frame_path': final_violence_frame_path,
@@ -132,38 +126,42 @@ class RealTimeViolenceDetector:
                     # Reset consecutive violence frames if not a violence frame
                     consecutive_violence_frames = 0
                     violence_frame_indices.clear()
-            
-                # Increment frame counter
-                frame_counter += 1
-                
+
                 # Annotate the frame with prediction
                 if predicted_class_name == "Violence":
                     cv2.putText(
-                        frame, 
-                        f"{predicted_class_name} (Consecutive: {consecutive_violence_frames})", 
-                        (5, 100), 
-                        cv2.FONT_HERSHEY_SIMPLEX, 
-                        1, 
-                        (0, 0, 255), 
+                        frame,
+                        f"{predicted_class_name} (Consecutive: {consecutive_violence_frames})",
+                        (5, 100),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        1,
+                        (0, 0, 255),
                         4
                     )
                 else:
                     cv2.putText(
-                        frame, 
-                        predicted_class_name, 
-                        (5, 100), 
-                        cv2.FONT_HERSHEY_SIMPLEX, 
-                        3, 
-                        (0, 255, 0), 
+                        frame,
+                        predicted_class_name,
+                        (5, 100),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        3,
+                        (0, 255, 0),
                         12
                     )
-        
+
+            # Write the frame to the output video
+            video_writer.write(frame)
+
+            # Increment frame counter
+            frame_counter += 1
+
         # Close the video reader and writer
         video_reader.release()
         video_writer.release()
 
-        # If no 16 consecutive violence frames are detected
-        return None
+        # Return violence detection info if available
+        return violence_detected_info
+
 
     def predict_video(self, video_file_path):
 
@@ -210,10 +208,12 @@ class RealTimeViolenceDetector:
         # Get the class name using the retrieved index.
         predicted_class_name = self.CLASSES_LIST[predicted_label]
 
-        # Display the predicted class along with the prediction confidence.
-        print(f'Predicted: {predicted_class_name}\nConfidence: {predicted_labels_probabilities[predicted_label]}')
-
         video_reader.release()
+
+        # Display the predicted class along with the prediction confidence.
+        return f'Predicted: {predicted_class_name}\nConfidence: {predicted_labels_probabilities[predicted_label]}'
+
+        
 
     def detect_children(self, frame):
         """
@@ -222,18 +222,18 @@ class RealTimeViolenceDetector:
         results = self.child_detector(frame, conf=self.child_confidence_threshold, classes=[0]) 
         return len(results[0].boxes) > 0
 
-# def main():
-#     detector = RealTimeViolenceDetector(
-#         child_detection_model='yolov8s-detect-upfront.pt',
-#         violence_model_path='MoBiLSTM.keras'
-#     )
+def main():
+    detector = RealTimeViolenceDetector(
+        child_detection_model='yolov8s-detect-upfront.pt',
+        violence_model_path='MoBiLSTM.keras'
+    )
     
-#     # Example usage of frame-by-frame prediction
-#     result = detector.predict_frames("violence-dataset\Peliculas\\fights\\newfi73.avi", "output.mp4") #video_path, khong de gi la dung webcam
-#     print(result)
-#     # Example usage of whole video prediction
-#     #detector.predict_video("violence-dataset\Peliculas\\noFights\\5.mpg")
+    # Example usage of frame-by-frame prediction
+    #result = detector.predict_frames("temp_video.mp4", "output.mp4") #video_path, khong de gi la dung webcam
+    #print(result)
+    # Example usage of whole video prediction
+    print(detector.predict_video("test1.mp4"))
 
 
-# if __name__ == "__main__":
-#     main()
+if __name__ == "__main__":
+    main()

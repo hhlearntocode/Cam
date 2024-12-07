@@ -4,8 +4,11 @@ import numpy as np
 import librosa
 from audio_classification import audioProcess
 from moviepy.editor import VideoFileClip
-if 'audioModel' not in st.session_state:
+from violence_detection import RealTimeViolenceDetector
+
+if 'audioModel' not in st.session_state and 'videoModel' not in st.session_state:
     st.session_state['audioModel'] = audioProcess()
+    st.session_state['videoModel'] = RealTimeViolenceDetector()
 
 def video_to_audio(video_file, output_audio_path="output_audio.wav"):
     """Chuyển đổi video sang file WAV."""
@@ -15,6 +18,7 @@ def video_to_audio(video_file, output_audio_path="output_audio.wav"):
 
 def main():
     a = st.session_state['audioModel']
+    videoModel = st.session_state['videoModel']
     st.title("Video Audio Prediction with Streamlit")
     
     # Phần tải file video
@@ -27,7 +31,8 @@ def main():
         temp_video_path = "temp_video.mp4"
         with open(temp_video_path, "wb") as f:
             f.write(uploaded_file.read())
-        
+        st.write(f'{videoModel.predict_video(temp_video_path)}')
+        videoModel.predict_frames(temp_video_path, "output.mp4")
         # Chuyển đổi video sang WAV
         audio_path = video_to_audio(temp_video_path, output_audio_path="converted_audio.wav")
         
@@ -55,6 +60,8 @@ def main():
             st.write("Detected violent keywords:", violence_keywords)
         else:
             st.write("No violent keywords detected.")
+        st.write("Violence result video:")
+        st.video("output.mp4")
 
 if __name__ == "__main__":
     main()
