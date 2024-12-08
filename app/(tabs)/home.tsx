@@ -3,16 +3,15 @@ import React, { useEffect, useState } from "react";
 import { FlatList, StyleSheet, Text, TouchableOpacity, View, Image, Alert } from "react-native";
 import AddStudentModal from "../../components/AddStudent";
 import ListNotification from "../../components/ListNotification";
-import { db } from "../../firebase.config"; // Import cấu hình Firestore
-import { collection, getDocs, doc, deleteDoc } from "firebase/firestore"; // Các hàm Firestore
+import { db } from "../../firebase.config"; 
+import { collection, getDocs, doc, deleteDoc } from "firebase/firestore"; 
 import EditStudentModal from "../../components/EditStudentModel";
 
 const HomeScreen = () => {
     const [modalVisible, setModalVisible] = useState(false);
-    const [students, setStudents] = useState([]); // State lưu danh sách học sinh
-    const [editModalStates, setEditModalStates] = useState({}); // State quản lý trạng thái modal cho từng học sinh
+    const [students, setStudents] = useState([]); 
+    const [editModalStates, setEditModalStates] = useState({}); 
 
-    // Hàm lấy danh sách học sinh từ Firestore
     const fetchStudents = async () => {
         try {
             const querySnapshot = await getDocs(collection(db, "students"));
@@ -20,9 +19,8 @@ const HomeScreen = () => {
                 id: doc.id,
                 ...doc.data(),
             }));
-            setStudents(studentsList); // Lưu danh sách vào state
+            setStudents(studentsList); 
 
-            // Tạo state modal ban đầu cho từng học sinh
             const initialModalStates = {};
             studentsList.forEach(student => {
                 initialModalStates[student.id] = false;
@@ -51,8 +49,8 @@ const HomeScreen = () => {
                     style: "destructive",
                     onPress: async () => {
                         try {
-                            await deleteDoc(doc(db, "students", studentId)); // Xóa học sinh khỏi Firestore
-                            fetchStudents(); // Cập nhật lại danh sách học sinh
+                            await deleteDoc(doc(db, "students", studentId)); 
+                            fetchStudents(); 
                         } catch (error) {
                             console.error("Error deleting student: ", error);
                         }
@@ -63,7 +61,7 @@ const HomeScreen = () => {
     };
 
     useEffect(() => {
-        fetchStudents(); // Lấy dữ liệu khi màn hình được tải
+        fetchStudents(); 
     }, []);
 
     return (
