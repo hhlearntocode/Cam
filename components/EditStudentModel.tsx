@@ -10,22 +10,48 @@ import {
 } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { storage } from "../firebase.config" // Import Firebase config
-import { doc, setDoc, addDoc, collection } from "firebase/firestore";
-import { db } from "../firebase.config";
+import { doc, updateDoc, getDoc } from "firebase/firestore";
+import { db, storage } from "../firebase.config"; // Firebase config
 
-interface AddStudentModalProps {
+interface EditStudentModalProps {
     visible: boolean;
     onClose: () => void;
+    studentId: string;
 }
 
-const AddStudentModal: React.FC<AddStudentModalProps> = ({
+const EditStudentModal: React.FC<EditStudentModalProps> = ({
     visible,
     onClose,
+    studentId,
 }) => {
     const [name, setName] = useState("");
     const [age, setAge] = useState("");
     const [image, setImage] = useState("");
+    const [currentImageUrl, setCurrentImageUrl] = useState("");
+
+    // Load student data
+    React.useEffect(() => {
+        const fetchStudentData = async () => {
+            if (!studentId) return;
+            try {
+                const docRef = doc(db, "students", studentId);
+                const docSnap = await getDoc(docRef);
+
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    setName(data.name || "");
+                    setAge(data.age?.toString() || "");
+                    setCurrentImageUrl(data.imageUrl || "");
+                } else {
+                    console.log("No such document!");
+                }
+            } catch (error) {
+                console.error("Error fetching student data:", error);
+            }
+        };
+
+        fetchStudentData();
+    }, [studentId]);
 
     const handleImagePicker = async () => {
         const result = await ImagePicker.launchImageLibraryAsync({
@@ -36,50 +62,49 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
         });
 
         if (!result.canceled) {
-            setImage(result.assets[0].uri); // Cập nhật đường dẫn ảnh
+            setImage(result.assets[0].uri);
         }
     };
 
-    const handleUpload = async () => {
-        if (!image || !name || !age) {
-            console.error("Missing required fields: name, age, or image.");
+    const handleUpdate = async () => {
+        if (!name || !age) {
+            console.error("Missing required fields: name or age.");
             return;
         }
 
         try {
-            // Tạo một tham chiếu đến file trong Firebase Storage
-            const imageName = `students/${Date.now()}.jpg`;
-            const storageRef = ref(storage, imageName);
+            let imageUrl = currentImageUrl;
 
-            // Fetch ảnh dưới dạng blob
-            const response = await fetch(image);
-            const blob = await response.blob();
+            // Upload new image if one is selected
+            if (image) {
+                const imageName = `students/${Date.now()}.jpg`;
+                const storageRef = ref(storage, imageName);
+                const response = await fetch(image);
+                const blob = await response.blob();
 
-            // Upload blob lên Firebase Storage
-            await uploadBytes(storageRef, blob);
-            // Lấy URL tải xuống của ảnh
-            const downloadURL = await getDownloadURL(storageRef);
+                await uploadBytes(storageRef, blob);
+                imageUrl = await getDownloadURL(storageRef);
+            }
 
-            // Lưu thông tin vào Firestore
-            const docRef = await addDoc(collection(db, "students"), {
-                name: name,
-                age: parseInt(age), 
-                imageUrl: downloadURL,
-                parentID: "123",
-                createdAt: new Date(), // Thêm thời gian tạo
+            // Update Firestore document
+            const docRef = doc(db, "students", studentId);
+            await updateDoc(docRef, {
+                name,
+                age: parseInt(age, 10),
+                imageUrl,
+                updatedAt: new Date(), // Thêm thời gian cập nhật
             });
 
-            console.log("Document written with ID: ", docRef.id);
-
-            console.log("Image uploaded successfully:", downloadURL);
+            console.log("Document updated successfully");
 
             setName("");
             setAge("");
-            setImage(""); // Reset ảnh sau khi upload thành công
+            setImage("");
+            setCurrentImageUrl(imageUrl);
 
-            return downloadURL;
+            onClose();
         } catch (error) {
-            console.error("Error uploading image:", error);
+            console.error("Error updating student:", error);
         }
     };
 
@@ -92,7 +117,6 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
         >
             <View style={styles.overlay}>
                 <View style={styles.modalContainer}>
-                    
                     <TouchableOpacity
                         onPress={onClose}
                         style={styles.closeButton}
@@ -102,33 +126,37 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
 
                     <TextInput
                         style={styles.input}
-                        placeholder={name}
+                        placeholder="Name"
                         value={name}
                         onChangeText={setName}
                     />
                     <TextInput
                         style={styles.input}
-                        placeholder={age}
+                        placeholder="Age"
                         value={age}
                         onChangeText={setAge}
+                        keyboardType="numeric"
                     />
                     <TouchableOpacity
                         onPress={handleImagePicker}
                         style={styles.uploadButton}
                     >
-                        <Text style={styles.uploadButtonText}>Chọn ảnh</Text>
+                        <Text style={styles.uploadButtonText}>Choose Image</Text>
                     </TouchableOpacity>
-                    {image ? (
-                        <Image source={{ uri: image }} style={styles.image} />
+                    {image || currentImageUrl ? (
+                        <Image
+                            source={{ uri: image || currentImageUrl }}
+                            style={styles.image}
+                        />
                     ) : (
                         <Text style={styles.placeholderText}>No image selected</Text>
                     )}
 
                     <TouchableOpacity
                         style={styles.submitButton}
-                        onPress={handleUpload}
+                        onPress={handleUpdate}
                     >
-                        <Text style={styles.submitButtonText}>Xác nhận</Text>
+                        <Text style={styles.submitButtonText}>Update</Text>
                     </TouchableOpacity>
                 </View>
             </View>
@@ -202,4 +230,4 @@ const styles = StyleSheet.create({
     },
 });
 
-export default AddStudentModal;
+export default EditStudentModal;
