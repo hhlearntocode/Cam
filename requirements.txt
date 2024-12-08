@@ -1,14 +1,14 @@
-# tensorflow 
-# tensorflow-hub 
+tensorflow 
+tensorflow-hub 
 numpy 
-# librosa
-# soundfile
-# scipy
-# transformers
-# torch
-# streamlit
-# ultralytics
-# opencv-python
-# sounddevice
-# pandas
-# moviepy
+librosa
+soundfile
+scipy
+transformers
+torch
+streamlit
+ultralytics
+opencv-python
+sounddevice
+pandas
+moviepy
