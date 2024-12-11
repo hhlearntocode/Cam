@@ -32,6 +32,65 @@ class RealTimeViolenceDetector:
         self.result_queue = Queue(maxsize=max_queue_size)
         self.is_processing = True
 
+    def predict_frames1(self, video_file_path=0, output_file_path=None):
+        violence_frames_dir = 'violence_frames'
+        results_dir = 'results'
+        os.makedirs(violence_frames_dir, exist_ok=True)
+        os.makedirs(results_dir, exist_ok=True)
+        
+        video_reader = cv2.VideoCapture(video_file_path)
+        original_video_width = int(video_reader.get(cv2.CAP_PROP_FRAME_WIDTH))
+        original_video_height = int(video_reader.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        video_writer = cv2.VideoWriter(output_file_path, cv2.VideoWriter_fourcc(*'mp4v'),
+                                    video_reader.get(cv2.CAP_PROP_FPS), 
+                                    (original_video_width, original_video_height))
+        
+        frames_queue = deque(maxlen=self.SEQUENCE_LENGTH)
+        frame_counter = 0
+        violence_detected_info = None
+
+        while video_reader.isOpened():
+            ok, frame = video_reader.read()
+            if not ok:
+                break
+
+            # Resize and normalize for prediction
+            resized_frame = cv2.resize(frame, (self.IMAGE_HEIGHT, self.IMAGE_WIDTH))
+            normalized_frame = resized_frame / 255
+            frames_queue.append(normalized_frame)
+
+            # Always write the original frame to the output video
+            video_writer.write(frame)
+
+            # Perform prediction when we have a full sequence
+            if len(frames_queue) == self.SEQUENCE_LENGTH:
+                predicted_labels_probabilities = self.MoBiLSTM_model.predict(np.expand_dims(frames_queue, axis=0))[0]
+                predicted_label = np.argmax(predicted_labels_probabilities)
+                predicted_class_name = self.CLASSES_LIST[predicted_label]
+
+                if predicted_class_name == "Violence":
+                    # Save violence frame
+                    violence_frame_path = os.path.join(violence_frames_dir, f'frame_{frame_counter}.jpg')
+                    cv2.imwrite(violence_frame_path, frame)
+
+                    # Detect children
+                    child_detected = self.detect_children(frame)
+
+                    # Annotate frame
+                    annotation = f"Violence Detected | Child Detected: {child_detected}"
+                    cv2.putText(frame, annotation, (10, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+
+                    # Save annotated frame to results
+                    result_frame_path = os.path.join(results_dir, f'frame_{frame_counter}.jpg')
+                    cv2.imwrite(result_frame_path, frame)
+
+            frame_counter += 1
+
+        video_reader.release()
+        video_writer.release()
+
+        return violence_detected_info
+
     def predict_frames(self, video_file_path=0, output_file_path=None):
         violence_frames_dir = 'violence_frames'
         os.makedirs(violence_frames_dir, exist_ok=True)
@@ -229,10 +288,10 @@ def main():
     )
     
     # Example usage of frame-by-frame prediction
-    #result = detector.predict_frames("temp_video.mp4", "output.mp4") #video_path, khong de gi la dung webcam
-    #print(result)
+    result = detector.predict_frames1("test1.mp4", "output.mp4") #video_path, khong de gi la dung webcam
+    print(result)
     # Example usage of whole video prediction
-    print(detector.predict_video("test1.mp4"))
+    #print(detector.predict_video("test1.mp4"))
 
 
 if __name__ == "__main__":
