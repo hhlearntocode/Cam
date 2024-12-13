@@ -12,3 +12,6 @@ opencv-python
 sounddevice
 pandas
 moviepy
+cmake
+face_recognition
+mtcnn
