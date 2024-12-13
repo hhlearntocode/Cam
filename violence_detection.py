@@ -239,56 +239,57 @@ class RealTimeViolenceDetector:
 
     def detect_and_save_face(self, image):
         """
-        Detect and save face embeddings from an image.
-
+        Detect and save face embeddings from an image
+        
         Args:
-            image (numpy.ndarray): Input image in RGB format.
-
+            image (numpy.ndarray): Input image in RGB format
+        
         Returns:
-            list: List of detected face information, including embeddings and bounding box details.
+            list: List of detected face information
         """
-        # Ensure the image is in RGB format
+        # Convert image to RGB if not already
         if len(image.shape) == 3 and image.shape[2] == 3:
             image_rgb = image
         else:
             image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-
+        
         # Detect faces using MTCNN
         faces = self.face_detector.detect_faces(image_rgb)
+        
         detected_faces = []
-
-        if faces:
-            print(f"Detected {len(faces)} face(s).")
+        
+        if len(faces) > 0:
             for face in faces:
-                # Extract face coordinates
+                # Get face coordinates
                 x, y, w, h = face['box']
-                if w > 0 and h > 0:  # Check for valid face dimensions
-                    face_img = image_rgb[y:y+h, x:x+w]
-                    try:
-                        # Generate face embedding
-                        face_embedding = face_recognition.face_encodings(face_img)
-                        if face_embedding:
-                            detected_face_info = {
-                                'embedding': face_embedding[0],
-                                'bbox': {
-                                    'x': x,
-                                    'y': y,
-                                    'width': w,
-                                    'height': h
-                                }
-                            }
-                            detected_faces.append(detected_face_info)
-                        else:
-                            print(f"No embedding created for face at bbox: {face['box']}")
-                    except Exception as e:
-                        print(f"Error processing face at bbox {face['box']}: {e}")
-                else:
-                    print(f"Skipped invalid face with bbox: {face['box']}")
-        else:
-            print("No faces detected.")
-
+                
+                # Crop face
+                face_img = image_rgb[y:y+h, x:x+w]
+                
+                # Convert to PIL Image
+                face_img_pil = Image.fromarray(face_img)
+                
+                # Create face embedding
+                try:
+                    face_embedding = face_recognition.face_encodings(
+                        np.array(face_img_pil)
+                    )[0]
+                    
+                    detected_face_info = {
+                        'embedding': face_embedding,
+                        'bbox': {
+                            'x': x,
+                            'y': y,
+                            'width': w,
+                            'height': h
+                        }
+                    }
+                    
+                    detected_faces.append(detected_face_info)
+                except Exception as e:
+                    print(f"Error creating embedding: {e}")
+        
         return detected_faces
-
 
     def predict_frames(self, video_file_path=0, output_file_path=None):
         violence_frames_dir = 'violence_frames'
