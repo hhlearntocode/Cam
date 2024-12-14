@@ -1,19 +1,26 @@
-import React, { useEffect, useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as ImagePicker from "expo-image-picker";
+import {
+    addDoc,
+    arrayUnion,
+    collection,
+    doc,
+    updateDoc,
+} from "firebase/firestore";
+import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
+import React from "react";
 import {
     Image,
     Modal,
+    ScrollView,
     StyleSheet,
     Text,
-    TextInput,
     TouchableOpacity,
     View,
 } from "react-native";
-import * as ImagePicker from "expo-image-picker";
-import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { storage } from "../firebase.config" // Import Firebase config
-import { doc, setDoc, addDoc, collection, updateDoc, arrayUnion } from "firebase/firestore";
-import { db } from "../firebase.config";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { db, storage } from "../firebase.config"; // Import Firebase config
+import useForm from "../hooks/useForm";
+// import StudentInput from "./StudentInput";
 
 interface AddStudentModalProps {
     visible: boolean;
@@ -30,9 +37,18 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
     visible,
     onClose,
 }) => {
-    const [name, setName] = useState("");
-    const [age, setAge] = useState("");
-    const [image, setImage] = useState("");
+    const {
+        name,
+        setName,
+        age,
+        setAge,
+        address,
+        setAddress,
+        school,
+        setSchool,
+        image,
+        setImage,
+    } = useForm();
 
     // const [students, setStudents] = useState<student[]>([]);
 
@@ -58,8 +74,9 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
     // } , [])
 
     const handleUpload = async () => {
-        if (!image || !name || !age) {
-            console.error("Missing required fields: name, age, or image.");
+        if (!image || !name || !age || !school || !address) {
+            console.error("All input is required");
+            alert("All input is required");
             return;
         }
 
@@ -82,7 +99,7 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
             // Lưu thông tin vào Firestore
             const docRef = await addDoc(collection(db, "students"), {
                 name: name,
-                age: parseInt(age), 
+                age: parseInt(age),
                 imageUrl: downloadURL,
                 createdAt: new Date(), // Thêm thời gian tạo
             });
@@ -96,7 +113,7 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
 
             await updateDoc(userRef, {
                 studentId: arrayUnion(studentRef),
-            })
+            });
 
             console.log("Document written with ID: ", docRef.id);
             console.log("Image uploaded successfully:", downloadURL);
@@ -108,56 +125,84 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
             return downloadURL;
         } catch (error) {
             console.error("Error uploading image:", error);
+            alert("Error uploading image");
         }
     };
 
     return (
         <Modal
-            animationType="slide"
+            animationType="fade"
             transparent={true}
             visible={visible}
             onRequestClose={onClose}
         >
             <View style={styles.overlay}>
                 <View style={styles.modalContainer}>
-                    
                     <TouchableOpacity
                         onPress={onClose}
                         style={styles.closeButton}
                     >
                         <Text style={styles.closeButtonText}>X</Text>
                     </TouchableOpacity>
-
-                    <TextInput
-                        style={styles.input}
-                        placeholder={name}
-                        value={name}
-                        onChangeText={setName}
-                    />
-                    <TextInput
-                        style={styles.input}
-                        placeholder={age}
-                        value={age}
-                        onChangeText={setAge}
-                    />
-                    <TouchableOpacity
-                        onPress={handleImagePicker}
-                        style={styles.uploadButton}
+                    <ScrollView
+                        contentContainerStyle={styles.scrollViewContent}
+                        showsVerticalScrollIndicator={false}
                     >
-                        <Text style={styles.uploadButtonText}>Chọn ảnh</Text>
-                    </TouchableOpacity>
-                    {image ? (
-                        <Image source={{ uri: image }} style={styles.image} />
-                    ) : (
-                        <Text style={styles.placeholderText}>No image selected</Text>
-                    )}
+                        <Text style={styles.title}>Thông tin học sinh</Text>
+                        {/* <StudentInput
+                            label="Student name"
+                            placeholder="Name"
+                            value={name}
+                            onChangeText={setName}
+                        />
+                        <StudentInput
+                            label="Student age"
+                            placeholder="Age"
+                            value={age}
+                            onChangeText={setAge}
+                        />
+                        <StudentInput
+                            label="Student Address"
+                            placeholder="Address"
+                            value={address}
+                            onChangeText={setAddress}
+                        /> */}
+                        <TouchableOpacity
+                            onPress={handleImagePicker}
+                            style={styles.uploadButton}
+                        >
+                            <Text style={styles.uploadButtonText}>
+                                Chọn ảnh
+                            </Text>
+                        </TouchableOpacity>
+                        {image ? (
+                            <Image
+                                source={{ uri: image }}
+                                style={styles.image}
+                            />
+                        ) : (
+                            <Text style={styles.placeholderText}>
+                                No image selected
+                            </Text>
+                        )}
 
-                    <TouchableOpacity
-                        style={styles.submitButton}
-                        onPress={handleUpload}
-                    >
-                        <Text style={styles.submitButtonText}>Xác nhận</Text>
-                    </TouchableOpacity>
+                        <Text style={styles.title}>Thông tin trường học</Text>
+                        {/* <StudentInput
+                            label="School name"
+                            placeholder="School"
+                            value={school}
+                            onChangeText={setSchool}
+                        /> */}
+
+                        <TouchableOpacity
+                            style={styles.submitButton}
+                            onPress={handleUpload}
+                        >
+                            <Text style={styles.submitButtonText}>
+                                Xác nhận
+                            </Text>
+                        </TouchableOpacity>
+                    </ScrollView>
                 </View>
             </View>
         </Modal>
@@ -170,6 +215,9 @@ const styles = StyleSheet.create({
         backgroundColor: "rgba(0, 0, 0, 0.5)",
         justifyContent: "flex-end",
         alignItems: "center",
+    },
+    scrollViewContent: {
+        paddingBottom: 20, // Provide padding to prevent content from being cut off
     },
     modalContainer: {
         height: "90%",
@@ -188,27 +236,29 @@ const styles = StyleSheet.create({
         fontSize: 18,
         color: "#000",
     },
+    title: {
+        alignSelf: "flex-start",
+        marginBottom: 16,
+        fontSize: 20,
+        fontWeight: 500,
+    },
     uploadButton: {
-        backgroundColor: "#007bff",
+        backgroundColor: "#28a745",
         padding: 10,
-        borderRadius: 5,
-        marginBottom: 10,
+        borderRadius: 20,
+        marginVertical: 16,
+        width: "50%",
+        alignItems: "center",
     },
     uploadButtonText: {
         color: "#fff",
-    },
-    input: {
-        width: "100%",
-        padding: 10,
-        borderWidth: 1,
-        borderColor: "#ccc",
-        borderRadius: 5,
-        marginBottom: 10,
+        fontSize: 16,
+        fontWeight: "bold",
     },
     submitButton: {
         backgroundColor: "#28a745",
         padding: 14,
-        borderRadius: 10,
+        borderRadius: 20,
         width: "100%",
         alignItems: "center",
         marginTop: 10,

@@ -1,30 +1,27 @@
 import React from "react";
-import { StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { StyleSheet, Text, TouchableOpacity } from "react-native";
 
 interface ActionButtonProps {
     title: string;
     onPress: () => void;
+    hover?: boolean;
 }
 
 const ActionButton: React.FC<ActionButtonProps> = ({ title, onPress }) => {
     return (
-        <View style={styles.buttonContainer}>
-            <TouchableOpacity style={styles.button} onPress={onPress}>
-                <Text style={styles.buttonText}>{title}</Text>
-            </TouchableOpacity>
-        </View>
+        <TouchableOpacity style={styles.button} onPress={onPress}>
+            <Text style={styles.buttonText}>{title}</Text>
+        </TouchableOpacity>
     );
 };
 
 const styles = StyleSheet.create({
-    buttonContainer: {
-        marginVertical: 16,
-    },
     button: {
         backgroundColor: "#6c47ff",
-        padding: 12,
-        borderRadius: 8,
+        paddingVertical: 14,
+        borderRadius: 30,
         alignItems: "center",
+        width: "100%",
     },
     buttonText: {
         color: "#fff",

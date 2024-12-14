@@ -1,15 +1,9 @@
 import Feather from "@expo/vector-icons/Feather";
-import { Tabs, useRouter } from "expo-router";
+import { Tabs } from "expo-router";
 import React from "react";
-import { Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 
 const TodoLayout = () => {
-    const router = useRouter();
-
-    const goLoginPage = () => {
-        // router.push("/(public)/login");
-    };
-
     //OPTION IN TAB.SCREEN
     const renderHeaderTitle = () => (
         <View style={styles.headerContainer}>
@@ -28,9 +22,12 @@ const TodoLayout = () => {
 
     const renderHeaderRight = () => {
         return (
-            <Pressable style={styles.notificationButton} onPress={() => null}>
+            <TouchableOpacity
+                style={styles.notificationButton}
+                onPress={() => null}
+            >
                 <Feather name="bell" size={20} color="#fff" />
-            </Pressable>
+            </TouchableOpacity>
         );
     };
 

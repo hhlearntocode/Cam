@@ -1,47 +1,55 @@
-import React, { useState } from "react";
-import { Alert, StyleSheet, View } from "react-native";
+import { Image } from "expo-image";
+import { useRouter } from "expo-router";
+import { addDoc, collection } from "firebase/firestore";
+import { Alert, StyleSheet, Text, View } from "react-native";
 import ActionButton from "../../components/ActionButton";
 import InputField from "../../components/InputField";
 import { db } from "../../firebase.config";
-import { collection, addDoc } from "firebase/firestore";
-import { useRouter } from "expo-router";
+import useForm from "../../hooks/useForm";
 
 const RegisterPage = () => {
-
-    const [phone, setPhone] = useState("");
-    const [name, setName] = useState("");
-    const [password, setPassword] = useState("");
+    const { name, setName, password, setPassword, phone, setPhone } = useForm();
 
     const router = useRouter();
 
     const onSignUpPress = async () => {
         if (!phone || !name || !password) {
-            Alert.alert("Vui lòng nhập đầy đủ thông tin"); 
+            Alert.alert("Please enter all required information");
             return;
         }
-        
+
         try {
             const docRef = await addDoc(collection(db, "user"), {
                 name,
                 phone,
-                password, 
+                password,
                 createdAt: new Date().toISOString(),
             });
-    
-            Alert.alert("Đăng ký thành công", `User ID: ${docRef.id}`);
+
+            Alert.alert("Registration successful", `User ID: ${docRef.id}`);
 
             router.push("/login");
         } catch (error) {
             console.error("Error adding document: ", error);
-            Alert.alert("Đăng ký thất bại", "Vui lòng thử lại");
+            Alert.alert("Registration failed", "Please try again");
         }
     };
 
     return (
         <View style={styles.container}>
+            {/* Logo */}
+            <Image
+                style={styles.logo}
+                source="https://www.musicman.co.jp/sites/default/files/inline-images/hifive_logo.jpg"
+                contentFit="contain"
+                transition={1000}
+            ></Image>
+            {/* Title */}
+            <Text style={styles.title}>Work without limits</Text>
             {/* Email Input */}
             <View style={styles.inputContainer}>
                 <InputField
+                    label="Your email address"
                     placeholder="Name"
                     value={name}
                     onChangeText={setName}
@@ -51,16 +59,27 @@ const RegisterPage = () => {
             {/* Password Input */}
             <View style={styles.inputContainer}>
                 <InputField
+                    label="Choose a password"
                     placeholder="Password"
                     value={password}
                     onChangeText={setPassword}
                     secureTextEntry
                 />
             </View>
-
+            {/* Phone Input */}
             <View style={styles.inputContainer}>
                 <InputField
+                    label="Your phone number"
                     placeholder="Phone"
+                    value={phone}
+                    onChangeText={setPhone}
+                />
+            </View>
+            {/* Confirm Pass */}
+            <View style={styles.inputContainer}>
+                <InputField
+                    label="Confirm password"
+                    placeholder="Confirm password"
                     value={phone}
                     onChangeText={setPhone}
                 />
@@ -77,14 +96,28 @@ const RegisterPage = () => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        justifyContent: "center",
         padding: 20,
+        backgroundColor: "#fefefe",
+        alignItems: "center",
+    },
+    logo: {
+        alignSelf: "center",
+        width: 200,
+        height: 75,
+    },
+    title: {
+        fontSize: 18,
+        fontWeight: "600",
+        color: "#333",
+        marginBottom: 50,
     },
     inputContainer: {
-        marginBottom: 16,
+        width: "100%",
+        marginBottom: 10,
     },
     buttonContainer: {
-        marginVertical: 16,
+        width: "100%",
+        marginTop: 16,
     },
 });
 

@@ -1,17 +1,31 @@
 import { useState } from "react";
 
 const useForm = () => {
-    const [emailAccount, setEmailAccount] = useState("");
+    const [name, setName] = useState("");
     const [password, setPassword] = useState("");
     const [loading, setLoading] = useState(false);
-
+    const [phone, setPhone] = useState("");
+    const [age, setAge] = useState("");
+    const [address, setAddress] = useState("");
+    const [school, setSchool] = useState("");
+    const [image, setImage] = useState("");
     return {
-        emailAccount,
-        setEmailAccount,
+        name,
+        setName,
         password,
         setPassword,
         loading,
         setLoading,
+        phone,
+        setPhone,
+        age,
+        setAge,
+        school,
+        setSchool,
+        address,
+        setAddress,
+        image,
+        setImage,
     };
 };
 

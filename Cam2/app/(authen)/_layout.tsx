@@ -1,5 +1,4 @@
 import { Stack } from "expo-router";
-import React from "react";
 
 const PublicLayout = () => {
     return (
@@ -16,13 +15,13 @@ const PublicLayout = () => {
             <Stack.Screen
                 name="login"
                 options={{
-                    headerTitle: "Todo-App",
+                    headerShown: false,
                 }}
             ></Stack.Screen>
             <Stack.Screen
                 name="register"
                 options={{
-                    headerTitle: "Create account",
+                    headerShown: false,
                 }}
             ></Stack.Screen>
         </Stack>
