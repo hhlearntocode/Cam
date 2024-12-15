@@ -1,15 +1,21 @@
-import { useLocalSearchParams, useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
-import { StyleSheet, Text, TouchableOpacity, View, Image } from "react-native";
+import { useLocalSearchParams } from "expo-router";
+import { useVideoPlayer, VideoView } from "expo-video";
 import { doc, getDoc } from "firebase/firestore";
+import React, { useEffect, useState } from "react";
+import { StyleSheet, Text, View } from "react-native";
 import { db } from "../../firebase.config";
+
+const videoSource =
+    "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4";
 
 const DetailVideoScreen = () => {
     const params = useLocalSearchParams();
-    const router = useRouter();
     const [notificationData, setNotificationData] = useState<any>(null);
-
     const { notificationId } = params;
+    const player = useVideoPlayer(videoSource, (player) => {
+        player.loop = true;
+        player.play();
+    });
 
     // Hàm để lấy dữ liệu thông báo từ Firebase
     const fetchNotificationData = async () => {
@@ -46,24 +52,15 @@ const DetailVideoScreen = () => {
 
     return (
         <View style={styles.container}>
-            <TouchableOpacity
-                onPress={() => router.back()}
-                style={styles.backButton}
-            >
-                <Text style={styles.backButtonText}>Quay lại</Text>
-            </TouchableOpacity>
-
-            <Text style={styles.title}>Chi tiết thông báo</Text>
-
-            {/* Hiển thị hình ảnh nếu có */}
-            {imageUrl ? (
-                <Image source={{ uri: imageUrl }} style={styles.image} />
-            ) : (
-                <View style={styles.placeholderImage}>
-                    <Text style={styles.placeholderText}>No Image</Text>
-                </View>
-            )}
-
+            <View style={styles.container1}>
+                <Text style={styles.title}>Chi tiết thông báo</Text>
+                <VideoView
+                    style={styles.video}
+                    player={player}
+                    allowsFullscreen
+                    allowsPictureInPicture
+                />
+            </View>
             {/* Hiển thị các chi tiết thông báo */}
             <View style={styles.detailsContainer}>
                 <Text style={styles.detailItem}>
@@ -89,31 +86,18 @@ const DetailVideoScreen = () => {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        padding: 16,
-        backgroundColor: "#000", // Change background to black
+        padding: 20,
     },
-    backButton: {
-        marginBottom: 20,
-        padding: 10,
-        backgroundColor: "#007bff",
-        borderRadius: 5,
-    },
-    backButtonText: {
-        color: "#fff",
-        textAlign: "center",
+    container1: {
+        marginTop: 30,
     },
     title: {
-        fontSize: 24,
+        fontSize: 28,
         fontWeight: "bold",
-        marginBottom: 16,
+        marginTop: 10,
+        marginBottom: 30,
         textAlign: "center",
-        color: "#fff", // Set header text to white
-    },
-    image: {
-        width: "100%",
-        height: 300,
-        marginBottom: 16,
-        borderRadius: 8,
+        color: "#000",
     },
     placeholderImage: {
         width: "100%",
@@ -132,17 +116,21 @@ const styles = StyleSheet.create({
         marginTop: 16,
     },
     detailItem: {
-        fontSize: 16,
+        fontSize: 20,
         marginBottom: 8,
-        color: "#fff", // Set text color to white
+        color: "#000",
     },
     detailLabel: {
         fontWeight: "bold",
     },
     loadingText: {
-        color: "#fff", // Loading text color to white
+        color: "#000",
         textAlign: "center",
         fontSize: 18,
+    },
+    video: {
+        width: "100%",
+        height: 200,
     },
 });
 

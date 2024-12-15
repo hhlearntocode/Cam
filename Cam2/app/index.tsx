@@ -1,5 +1,5 @@
 import { Redirect } from "expo-router";
-import React, { useEffect } from "react";
+import React from "react";
 
 // import * as Notifications from 'expo-notifications';
 // import * as Device from 'expo-device';
@@ -38,14 +38,14 @@ import React, { useEffect } from "react";
 // };
 
 const Index = () => {
-//   useEffect(() => {
-//     const fetchToken = async () => {
-//       await getToken();
-//     };
-//     fetchToken();
-//   }, []);
+    //   useEffect(() => {
+    //     const fetchToken = async () => {
+    //       await getToken();
+    //     };
+    //     fetchToken();
+    //   }, []);
 
-  return <Redirect href="/login" />;
+    return <Redirect href="/home" />;
 };
 
 export default Index;

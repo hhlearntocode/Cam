@@ -1,18 +1,28 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as ImagePicker from "expo-image-picker";
+import {
+    collection,
+    deleteDoc,
+    doc,
+    getDoc,
+    getDocs,
+    updateDoc,
+} from "firebase/firestore";
+import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import React, { useState } from "react";
 import {
+    Alert,
     Image,
     Modal,
+    ScrollView,
     StyleSheet,
     Text,
-    TextInput,
     TouchableOpacity,
     View,
 } from "react-native";
-import * as ImagePicker from "expo-image-picker";
-import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
-import { doc, updateDoc, getDoc } from "firebase/firestore";
 import { db, storage } from "../firebase.config"; // Firebase config
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import useForm from "../hooks/useForm";
+import StudentInput from "./StudentInput";
 
 interface EditStudentModalProps {
     visible: boolean;
@@ -25,10 +35,21 @@ const EditStudentModal: React.FC<EditStudentModalProps> = ({
     onClose,
     studentId,
 }) => {
-    const [name, setName] = useState("");
-    const [age, setAge] = useState("");
-    const [image, setImage] = useState("");
+    const {
+        name,
+        setName,
+        age,
+        setAge,
+        address,
+        setAddress,
+        school,
+        setSchool,
+        image,
+        setImage,
+    } = useForm();
     const [currentImageUrl, setCurrentImageUrl] = useState("");
+    const [students, setStudents] = useState([]);
+    const [editModalStates, setEditModalStates] = useState({});
 
     // Load student data
     React.useEffect(() => {
@@ -111,9 +132,105 @@ const EditStudentModal: React.FC<EditStudentModalProps> = ({
         }
     };
 
+    const fetchStudents = async () => {
+        try {
+            // const userId = sessionStorage.getItem("userId");
+            const userId = await AsyncStorage.getItem("userId");
+
+            if (!userId) {
+                console.error("User ID is missing from AsyncStorage.");
+                return;
+            }
+
+            // Fetch all students
+            const querySnapshot = await getDocs(collection(db, "students"));
+
+            // Filter students where the current user is listed in parentIDs
+            const studentsList = querySnapshot.docs
+                .map((doc) => ({
+                    id: doc.id,
+                    ...doc.data(),
+                }))
+                .filter((student) => student.userId?.includes(userId));
+
+            // Update state with the filtered students list
+            setStudents(studentsList);
+
+            // Create initial modal states for each student
+            const initialModalStates = studentsList.reduce((acc, student) => {
+                acc[student.id] = false; // Set all modals to closed initially
+                return acc;
+            }, {});
+            setEditModalStates(initialModalStates);
+        } catch (error) {
+            console.error("Error fetching students: ", error);
+        }
+    };
+
+    const handleDeleteStudent = async (studentId: string) => {
+        // const userId = sessionStorage.getItem("userId"); // Retrieve the logged-in user's ID
+        const userId = await AsyncStorage.getItem("userId");
+
+        if (!userId) {
+            Alert.alert(
+                "Lỗi",
+                "Không xác định được người dùng. Vui lòng đăng nhập lại."
+            );
+            return;
+        }
+
+        Alert.alert("Xác nhận xóa", "Bạn có chắc chắn muốn xóa học sinh này?", [
+            { text: "Hủy", style: "cancel" },
+            {
+                text: "Xóa",
+                style: "destructive",
+                onPress: async () => {
+                    try {
+                        // Retrieve the student document to validate `userId`
+                        const studentRef = doc(db, "students", studentId);
+                        const studentSnap = await getDoc(studentRef);
+
+                        if (!studentSnap.exists()) {
+                            Alert.alert("Lỗi", "Học sinh không tồn tại.");
+                            return;
+                        }
+
+                        const studentData = studentSnap.data();
+
+                        // Check if the logged-in user is associated with the student
+                        if (!studentData.userId?.includes(userId)) {
+                            Alert.alert(
+                                "Lỗi",
+                                "Bạn không có quyền xóa học sinh này."
+                            );
+                            return;
+                        }
+
+                        // Proceed with deletion
+                        await deleteDoc(studentRef);
+
+                        // Refresh the student list
+                        await fetchStudents();
+
+                        console.log(
+                            `Student with ID ${studentId} deleted successfully.`
+                        );
+                    } catch (error) {
+                        console.error("Error deleting student: ", error);
+
+                        Alert.alert(
+                            "Lỗi",
+                            "Không thể xóa học sinh. Vui lòng thử lại sau."
+                        );
+                    }
+                },
+            },
+        ]);
+    };
+
     return (
         <Modal
-            animationType="slide"
+            animationType="fade"
             transparent={true}
             visible={visible}
             onRequestClose={onClose}
@@ -126,41 +243,73 @@ const EditStudentModal: React.FC<EditStudentModalProps> = ({
                     >
                         <Text style={styles.closeButtonText}>X</Text>
                     </TouchableOpacity>
-
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Name"
-                        value={name}
-                        onChangeText={setName}
-                    />
-                    <TextInput
-                        style={styles.input}
-                        placeholder="Age"
-                        value={age}
-                        onChangeText={setAge}
-                        keyboardType="numeric"
-                    />
-                    <TouchableOpacity
-                        onPress={handleImagePicker}
-                        style={styles.uploadButton}
+                    <ScrollView
+                        contentContainerStyle={styles.scrollViewContent}
+                        showsVerticalScrollIndicator={false}
                     >
-                        <Text style={styles.uploadButtonText}>Choose Image</Text>
-                    </TouchableOpacity>
-                    {image || currentImageUrl ? (
-                        <Image
-                            source={{ uri: image || currentImageUrl }}
-                            style={styles.image}
+                        <Text style={styles.title}>Thông tin học sinh</Text>
+                        <StudentInput
+                            label="Student name"
+                            placeholder="Name"
+                            value={name}
+                            onChangeText={setName}
                         />
-                    ) : (
-                        <Text style={styles.placeholderText}>No image selected</Text>
-                    )}
+                        <StudentInput
+                            label="Student age"
+                            placeholder="Age"
+                            value={age}
+                            onChangeText={setAge}
+                        />
+                        <StudentInput
+                            label="Student address"
+                            placeholder="Address"
+                            value={address}
+                            onChangeText={setAddress}
+                        />
+                        <TouchableOpacity
+                            onPress={handleImagePicker}
+                            style={styles.uploadButton}
+                        >
+                            <Text style={styles.uploadButtonText}>
+                                Chọn ảnh
+                            </Text>
+                        </TouchableOpacity>
+                        {image || currentImageUrl ? (
+                            <Image
+                                source={{ uri: image || currentImageUrl }}
+                                style={styles.image}
+                            />
+                        ) : (
+                            <Text style={styles.placeholderText}>
+                                No image selected
+                            </Text>
+                        )}
 
-                    <TouchableOpacity
-                        style={styles.submitButton}
-                        onPress={handleUpdate}
-                    >
-                        <Text style={styles.submitButtonText}>Update</Text>
-                    </TouchableOpacity>
+                        <Text style={styles.title}>Thông tin trường học</Text>
+                        <StudentInput
+                            label="School name"
+                            placeholder="School"
+                            value={school}
+                            onChangeText={setSchool}
+                        />
+
+                        <TouchableOpacity
+                            style={styles.submitButton}
+                            onPress={handleUpdate}
+                        >
+                            <Text style={styles.submitButtonText}>
+                                Xác nhận
+                            </Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity
+                            style={styles.deleteButton}
+                            onPress={() => handleDeleteStudent(item.id)}
+                        >
+                            <Text style={styles.submitButtonText}>
+                                Xóa học sinh
+                            </Text>
+                        </TouchableOpacity>
+                    </ScrollView>
                 </View>
             </View>
         </Modal>
@@ -174,6 +323,9 @@ const styles = StyleSheet.create({
         justifyContent: "flex-end",
         alignItems: "center",
     },
+    scrollViewContent: {
+        paddingBottom: 20,
+    },
     modalContainer: {
         height: "90%",
         width: "100%",
@@ -181,7 +333,6 @@ const styles = StyleSheet.create({
         borderTopLeftRadius: 20,
         borderTopRightRadius: 20,
         padding: 20,
-        alignItems: "center",
     },
     closeButton: {
         alignSelf: "flex-end",
@@ -191,27 +342,29 @@ const styles = StyleSheet.create({
         fontSize: 18,
         color: "#000",
     },
+    title: {
+        alignSelf: "flex-start",
+        marginBottom: 16,
+        fontSize: 20,
+        fontWeight: 500,
+    },
     uploadButton: {
-        backgroundColor: "#007bff",
+        backgroundColor: "#28a745",
         padding: 10,
-        borderRadius: 5,
-        marginBottom: 10,
+        borderRadius: 20,
+        marginVertical: 16,
+        width: "50%",
+        alignItems: "center",
     },
     uploadButtonText: {
         color: "#fff",
-    },
-    input: {
-        width: "100%",
-        padding: 10,
-        borderWidth: 1,
-        borderColor: "#ccc",
-        borderRadius: 5,
-        marginBottom: 10,
+        fontSize: 16,
+        fontWeight: "bold",
     },
     submitButton: {
         backgroundColor: "#28a745",
         padding: 14,
-        borderRadius: 10,
+        borderRadius: 20,
         width: "100%",
         alignItems: "center",
         marginTop: 10,
@@ -222,14 +375,22 @@ const styles = StyleSheet.create({
         fontWeight: "bold",
     },
     image: {
-        width: 300,
+        width: 200,
         height: 200,
-        borderRadius: 10,
+        borderRadius: 100,
         marginBottom: 10,
     },
     placeholderText: {
         color: "#aaa",
         marginBottom: 10,
+    },
+    deleteButton: {
+        backgroundColor: "red",
+        padding: 14,
+        borderRadius: 20,
+        width: "100%",
+        alignItems: "center",
+        marginTop: 10,
     },
 });
 

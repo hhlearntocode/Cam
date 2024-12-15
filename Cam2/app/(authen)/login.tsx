@@ -47,12 +47,20 @@ const LoginPage = () => {
             if (authenticated) {
                 router.push("/home");
 
-                const userDocRef = doc(db, "user", userId);
+                const userDocRef = doc(db, "user", userId); 
 
-                await updateDoc(userDocRef, { apiToken: ApiToken });
+                try {
+                    await AsyncStorage.setItem("userId", userId);
+                    console.log("Stored userId:", userId);
+                } catch (error) {
+                    console.error("Error storing userId:", error);
+                }
 
-                // await updateDoc(userRef, { fcmToken: fcmToken });
-                await AsyncStorage.setItem("userId", userId);
+                if (ApiToken) {
+                    await updateDoc(userDocRef, { apiToken: ApiToken });
+                }
+            } else {
+                alert("Invalid credentials. Please try again.");
             }
         } catch (error) {
             //BUG KHONG ALERT DUOC

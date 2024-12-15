@@ -1,40 +1,66 @@
 import Feather from "@expo/vector-icons/Feather";
-import { Tabs } from "expo-router";
-import React from "react";
-import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Image } from "expo-image";
+import { router, Tabs } from "expo-router";
+import React, { useState } from "react";
+import { StyleSheet, TouchableOpacity } from "react-native";
+import AddStudentModal from "../../components/AddStudent";
 
-const TodoLayout = () => {
+interface TodoLayoutProps {
+    setStudents: React.Dispatch<React.SetStateAction<any[]>>;
+    setEditModalStates: React.Dispatch<
+        React.SetStateAction<Record<string, boolean>>
+    >;
+}
+
+const TodoLayout: React.FC<TodoLayoutProps> = ({
+    setStudents,
+    setEditModalStates,
+}) => {
+    const [modalVisible, setModalVisible] = useState(false);
+    const goToHome = () => {
+        router.push("/home");
+    };
+
     //OPTION IN TAB.SCREEN
     const renderHeaderTitle = () => (
-        <View style={styles.headerContainer}>
+        <TouchableOpacity style={styles.headerContainer} onPress={goToHome}>
             <Image
                 source={{
-                    uri: "",
+                    uri: "https://th.bing.com/th/id/R.7b28add3965d218ba46f61c16f1ac32c?rik=QAQ%2bzMIUs0OylA&pid=ImgRaw&r=0",
                 }}
+                contentFit="contain"
+                transition={1000}
                 style={styles.avatar}
             />
-            <View style={styles.headerTextContainer}>
-                <Text style={styles.headerTitle}>Student Name</Text>
-                <Text style={styles.headerSubtitle}>Age</Text>
-            </View>
-        </View>
+        </TouchableOpacity>
     );
 
     const renderHeaderRight = () => {
         return (
-            <TouchableOpacity
-                style={styles.notificationButton}
-                onPress={() => null}
-            >
-                <Feather name="bell" size={20} color="#fff" />
-            </TouchableOpacity>
+            <>
+                <TouchableOpacity
+                    style={styles.userPlusButton}
+                    onPress={() => setModalVisible(true)}
+                >
+                    <Feather name="user-plus" size={24} color="#000" />
+                </TouchableOpacity>
+                <AddStudentModal
+                    visible={modalVisible}
+                    onClose={() => setModalVisible(false)}
+                    setStudents={setStudents}
+                    setEditModalStates={setEditModalStates}
+                />
+                <TouchableOpacity
+                    style={styles.notificationButton}
+                    onPress={() => null}
+                >
+                    <Feather name="bell" size={24} color="#000" />
+                </TouchableOpacity>
+            </>
         );
     };
 
     const commonOptions = {
-        headerStyle: {
-            backgroundColor: "#171D22",
-        },
         headerTintColor: "#fff",
         headerTitle: renderHeaderTitle,
         headerRight: renderHeaderRight,
@@ -71,6 +97,7 @@ const TodoLayout = () => {
                 name="detailVideo"
                 options={{
                     href: null,
+                    headerShown: false,
                 }}
             />
         </Tabs>
@@ -83,10 +110,8 @@ const styles = StyleSheet.create({
         alignItems: "center",
     },
     avatar: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
-        marginRight: 10,
+        width: 160,
+        height: 160,
     },
     headerTextContainer: {
         justifyContent: "center",
@@ -102,9 +127,18 @@ const styles = StyleSheet.create({
     },
     notificationButton: {
         marginRight: 20,
-        borderRadius: 50,
         padding: 10,
-        backgroundColor: "#ccc",
+    },
+    userPlusButton: {
+        // borderRadius: 20,
+        // justifyContent: "center",
+        // alignItems: "center",
+        marginRight: 10,
+        // shadowColor: "#000",
+        // shadowOffset: { width: 0, height: 2 },
+        // shadowOpacity: 0.3,
+        // shadowRadius: 4,
+        // elevation: 5,
     },
 });
 

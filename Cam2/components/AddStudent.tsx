@@ -20,11 +20,13 @@ import {
 } from "react-native";
 import { db, storage } from "../firebase.config"; // Import Firebase config
 import useForm from "../hooks/useForm";
-// import StudentInput from "./StudentInput";
+import StudentInput from "./StudentInput";
 
 interface AddStudentModalProps {
     visible: boolean;
     onClose: () => void;
+    setStudents: React.Dispatch<React.SetStateAction<any[]>>;
+    setEditModalStates: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
 }
 
 // interface student {
@@ -36,6 +38,8 @@ interface AddStudentModalProps {
 const AddStudentModal: React.FC<AddStudentModalProps> = ({
     visible,
     onClose,
+    setStudents,
+    setEditModalStates,
 }) => {
     const {
         name,
@@ -64,14 +68,6 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
             setImage(result.assets[0].uri); // Cập nhật đường dẫn ảnh
         }
     };
-
-    // const fetchUser = async () => {
-
-    // }
-
-    // useEffect(() => {
-    //     fetchUser();
-    // } , [])
 
     const handleUpload = async () => {
         if (!image || !name || !age || !school || !address) {
@@ -121,8 +117,10 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
             setName("");
             setAge("");
             setImage(""); // Reset ảnh sau khi upload thành công
+            setStudents((prevStudents) => [...prevStudents, { id: docRef.id, name, age, imageUrl: downloadURL }]);
+            setEditModalStates((prevStates) => ({ ...prevStates, [docRef.id]: false }));
 
-            return downloadURL;
+            onClose();
         } catch (error) {
             console.error("Error uploading image:", error);
             alert("Error uploading image");
@@ -149,7 +147,7 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
                         showsVerticalScrollIndicator={false}
                     >
                         <Text style={styles.title}>Thông tin học sinh</Text>
-                        {/* <StudentInput
+                        <StudentInput
                             label="Student name"
                             placeholder="Name"
                             value={name}
@@ -162,11 +160,11 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
                             onChangeText={setAge}
                         />
                         <StudentInput
-                            label="Student Address"
+                            label="Student address"
                             placeholder="Address"
                             value={address}
                             onChangeText={setAddress}
-                        /> */}
+                        />
                         <TouchableOpacity
                             onPress={handleImagePicker}
                             style={styles.uploadButton}
@@ -187,12 +185,12 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
                         )}
 
                         <Text style={styles.title}>Thông tin trường học</Text>
-                        {/* <StudentInput
+                        <StudentInput
                             label="School name"
                             placeholder="School"
                             value={school}
                             onChangeText={setSchool}
-                        /> */}
+                        />
 
                         <TouchableOpacity
                             style={styles.submitButton}
@@ -217,7 +215,7 @@ const styles = StyleSheet.create({
         alignItems: "center",
     },
     scrollViewContent: {
-        paddingBottom: 20, // Provide padding to prevent content from being cut off
+        paddingBottom: 20,
     },
     modalContainer: {
         height: "90%",
@@ -226,7 +224,6 @@ const styles = StyleSheet.create({
         borderTopLeftRadius: 20,
         borderTopRightRadius: 20,
         padding: 20,
-        alignItems: "center",
     },
     closeButton: {
         alignSelf: "flex-end",

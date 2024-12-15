@@ -1,16 +1,16 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { router } from "expo-router";
+import { collection, getDocs } from "firebase/firestore";
 import React, { useEffect, useState } from "react";
 import {
     FlatList,
+    Image,
     StyleSheet,
     Text,
     TouchableOpacity,
     View,
-    Image,
 } from "react-native";
-import { router } from "expo-router";
-import { getDocs, collection } from "firebase/firestore";
 import { db } from "../firebase.config";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const ListNotification = () => {
     const [notifications, setNotifications] = useState<any[]>([]);
@@ -24,14 +24,18 @@ const ListNotification = () => {
                 return;
             }
 
-            const querySnapshot = await getDocs(collection(db, "notifications"));
+            const querySnapshot = await getDocs(
+                collection(db, "notifications")
+            );
 
             const notificationsList = querySnapshot.docs
                 .map((doc) => ({
                     id: doc.id,
                     ...doc.data(),
                 }))
-                .filter((notification) => notification.userId?.includes(userId));
+                .filter((notification) =>
+                    notification.userId?.includes(userId)
+                );
 
             setNotifications(notificationsList);
         } catch (error) {
@@ -54,7 +58,10 @@ const ListNotification = () => {
         <TouchableOpacity onPress={() => handlePress(item)} style={styles.item}>
             <View style={styles.iconContainer}>
                 {item.imageUrl ? (
-                    <Image source={{ uri: item.imageUrl }} style={styles.image} />
+                    <Image
+                        source={{ uri: item.imageUrl }}
+                        style={styles.image}
+                    />
                 ) : (
                     <View style={styles.icon}>
                         <Text style={styles.iconText}>
@@ -65,10 +72,10 @@ const ListNotification = () => {
             </View>
             <View style={styles.infoContainer}>
                 <Text style={styles.title}>{item.message}</Text>
-                <Text style={styles.camera}>Status: {item.status}</Text>
-                <Text style={styles.details}>
-                    {item.date} • {item.time}
-                </Text>
+                <Text style={styles.details}>Trạng thái: {item.status}</Text>
+                <Text style={styles.details}>{item.date}</Text>
+                <Text style={styles.details}>{item.time}</Text>
+                <Text style={styles.details}>Địa điểm: </Text>
             </View>
         </TouchableOpacity>
     );
@@ -87,13 +94,14 @@ const styles = StyleSheet.create({
     listContainer: {
         padding: 16,
         backgroundColor: "#ECEBDE",
+        borderRadius: 40,
     },
     item: {
         flexDirection: "row",
         alignItems: "center",
         padding: 16,
         backgroundColor: "#ffffff",
-        borderRadius: 8,
+        borderRadius: 20,
         marginBottom: 12,
         shadowColor: "#000",
         shadowOffset: { width: 0, height: 2 },
@@ -113,9 +121,9 @@ const styles = StyleSheet.create({
         alignItems: "center",
     },
     image: {
-        width: 40,
-        height: 40,
-        borderRadius: 20,
+        width: 80,
+        height: 80,
+        borderRadius: 40,
     },
     iconText: {
         color: "#fff",
@@ -130,13 +138,8 @@ const styles = StyleSheet.create({
         color: "#000",
         fontWeight: "bold",
     },
-    camera: {
-        fontSize: 14,
-        color: "#6c757d",
-        marginVertical: 2,
-    },
     details: {
-        fontSize: 12,
+        fontSize: 14,
         color: "#6c757d",
     },
 });
