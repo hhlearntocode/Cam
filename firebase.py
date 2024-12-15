@@ -19,17 +19,17 @@ def dbConnection():
 def pushData(data):
 
     # dummy data
-    data = {
-        "id": "1",
-        "title": "Person",
-        "camera": "1",
-        "time": "3:49 PM",
-        "day": "2023-12-07",
-        "videoUrl": "https://example.com/video1.mp4",
-    }
+    # data = {
+    #     "id": "1",
+    #     "title": "Person",
+    #     "camera": "1",
+    #     "time": "3:49 PM",
+    #     "day": "2023-12-07",
+    #     "videoUrl": "https://example.com/video1.mp4",
+    # }
 
     # push new data to firebase
-    db.collection("notifications").document("noti").set(data)
+    db.collection("notifications").document("noti").set(data)   
 
 
 # Hàm lấy token từ users
