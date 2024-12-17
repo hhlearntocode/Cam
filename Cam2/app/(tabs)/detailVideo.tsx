@@ -48,7 +48,7 @@ const DetailVideoScreen = () => {
         );
     }
 
-    const { title, imageUrl, time, date, message, status } = notificationData;
+    const { title, time, date, message, status } = notificationData;
 
     return (
         <View style={styles.container}>

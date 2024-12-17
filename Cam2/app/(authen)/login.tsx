@@ -3,7 +3,6 @@ import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { collection, doc, getDocs, updateDoc } from "firebase/firestore";
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
-import Debug from "../(debug)/debug";
 import ActionButton from "../../components/ActionButton";
 import InputField from "../../components/InputField";
 import { db } from "../../firebase.config";
@@ -47,7 +46,7 @@ const LoginPage = () => {
             if (authenticated) {
                 router.push("/home");
 
-                const userDocRef = doc(db, "user", userId); 
+                const userDocRef = doc(db, "user", userId);
 
                 try {
                     await AsyncStorage.setItem("userId", userId);
@@ -60,7 +59,7 @@ const LoginPage = () => {
                     await updateDoc(userDocRef, { apiToken: ApiToken });
                 }
             } else {
-                alert("Invalid credentials. Please try again.");
+                Alert.alert("Invalid credentials. Please try again.");
             }
         } catch (error) {
             //BUG KHONG ALERT DUOC
@@ -129,8 +128,6 @@ const LoginPage = () => {
                     <Text style={styles.regisText}>Sign Up here</Text>
                 </TouchableOpacity>
             </View>
-            {/* Token */}
-            <Debug />
         </View>
     );
 };

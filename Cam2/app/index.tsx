@@ -45,7 +45,7 @@ const Index = () => {
     //     fetchToken();
     //   }, []);
 
-    return <Redirect href="/home" />;
+    return <Redirect href="/login" />;
 };
 
 export default Index;

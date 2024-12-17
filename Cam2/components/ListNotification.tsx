@@ -93,7 +93,6 @@ const ListNotification = () => {
 const styles = StyleSheet.create({
     listContainer: {
         padding: 16,
-        backgroundColor: "#ECEBDE",
         borderRadius: 40,
     },
     item: {

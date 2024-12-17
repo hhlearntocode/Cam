@@ -1,61 +1,34 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { collection, getDocs } from "firebase/firestore";
-import React, { useEffect, useState } from "react";
+import React from "react";
 import { Image, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Swiper from "react-native-swiper";
 import EditStudentModal from "../../components/EditStudentModel";
 import ListNotification from "../../components/ListNotification";
-import { db } from "../../firebase.config";
+import useFetchStudents from "../../hooks/useFetchStudents";
 
 const HomeScreen = () => {
-    const [students, setStudents] = useState([]);
-    const [editModalStates, setEditModalStates] = useState({});
+    const {
+        students,
+        fetchStudents,
+        loading,
+        error,
+        editModalStates,
+        setEditModalStates,
+    } = useFetchStudents();
 
-    const fetchStudents = async () => {
-        try {
-            // const userId = sessionStorage.getItem("userId");
-            const userId = await AsyncStorage.getItem("userId");
+    if (loading) {
+        return <Text>Đang tải...</Text>;
+    }
 
-            if (!userId) {
-                console.error("User ID is missing from AsyncStorage.");
-                return;
-            }
+    if (error) {
+        return <Text>Lỗi: {error}</Text>;
+    }
 
-            // Fetch all students
-            const querySnapshot = await getDocs(collection(db, "students"));
-
-            // Filter students where the current user is listed in parentIDs
-            const studentsList = querySnapshot.docs
-                .map((doc) => ({
-                    id: doc.id,
-                    ...doc.data(),
-                }))
-                .filter((student) => student.userId?.includes(userId));
-
-            // Update state with the filtered students list
-            setStudents(studentsList);
-
-            // Create initial modal states for each student
-            const initialModalStates = studentsList.reduce((acc, student) => {
-                acc[student.id] = false; // Set all modals to closed initially
-                return acc;
-            }, {});
-            setEditModalStates(initialModalStates);
-        } catch (error) {
-            console.error("Error fetching students: ", error);
-        }
-    };
-
-    const toggleEditModal = (studentId, isVisible) => {
+    const toggleEditModal = (studentId: string, isVisible: boolean) => {
         setEditModalStates((prevStates) => ({
             ...prevStates,
             [studentId]: isVisible,
         }));
     };
-
-    useEffect(() => {
-        fetchStudents();
-    }, []);
 
     return (
         <View style={styles.container}>
@@ -87,22 +60,27 @@ const HomeScreen = () => {
                                         Tuổi: {item.age}
                                     </Text>
                                     <Text style={styles.studentText}>
-                                        Địa chỉ: {item.name}
+                                        Địa chỉ: {item.address}
                                     </Text>
                                 </View>
                             </View>
                             <View style={styles.schoolInfo}>
                                 <Text style={styles.title}>Trường học</Text>
                                 <Text style={styles.studentText}>
-                                    Tên: {item.name}
+                                    Tên: {item.school}
                                 </Text>
                             </View>
                         </View>
                         {/* Edit modal */}
                         <EditStudentModal
-                            visible={editModalStates[item.id]}
+                            visible={
+                                (editModalStates as { [key: string]: boolean })[
+                                    item.id
+                                ]
+                            }
                             onClose={() => toggleEditModal(item.id, false)}
                             studentId={item.id}
+                            refreshStudents={fetchStudents}
                         />
                     </TouchableOpacity>
                 ))}

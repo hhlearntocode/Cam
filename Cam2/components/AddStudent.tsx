@@ -18,28 +18,21 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
-import { db, storage } from "../firebase.config"; // Import Firebase config
+import { db, storage } from "../firebase.config";
+import useFetchStudents from "../hooks/useFetchStudents";
 import useForm from "../hooks/useForm";
 import StudentInput from "./StudentInput";
 
 interface AddStudentModalProps {
     visible: boolean;
     onClose: () => void;
-    setStudents: React.Dispatch<React.SetStateAction<any[]>>;
-    setEditModalStates: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
+    refreshStudents: () => void;
 }
-
-// interface student {
-//     name: string;
-//     age: number;
-//     imageUrl: string;
-// }
 
 const AddStudentModal: React.FC<AddStudentModalProps> = ({
     visible,
     onClose,
-    setStudents,
-    setEditModalStates,
+    refreshStudents,
 }) => {
     const {
         name,
@@ -54,7 +47,7 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
         setImage,
     } = useForm();
 
-    // const [students, setStudents] = useState<student[]>([]);
+    const { fetchStudents } = useFetchStudents();
 
     const handleImagePicker = async () => {
         const result = await ImagePicker.launchImageLibraryAsync({
@@ -97,11 +90,13 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
                 name: name,
                 age: parseInt(age),
                 imageUrl: downloadURL,
+                address: address,
+                school: school,
                 createdAt: new Date(), // Thêm thời gian tạo
             });
 
-            const studentRef = doc(db, "students", docRef.id);
             const userRef = doc(db, "user", userId);
+            const studentRef = doc(db, "students", docRef.id);
 
             await updateDoc(studentRef, {
                 userId: arrayUnion(userId),
@@ -111,15 +106,8 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
                 studentId: arrayUnion(studentRef),
             });
 
-            console.log("Document written with ID: ", docRef.id);
-            console.log("Image uploaded successfully:", downloadURL);
-
-            setName("");
-            setAge("");
-            setImage(""); // Reset ảnh sau khi upload thành công
-            setStudents((prevStudents) => [...prevStudents, { id: docRef.id, name, age, imageUrl: downloadURL }]);
-            setEditModalStates((prevStates) => ({ ...prevStates, [docRef.id]: false }));
-
+            await fetchStudents();
+            refreshStudents();
             onClose();
         } catch (error) {
             console.error("Error uploading image:", error);

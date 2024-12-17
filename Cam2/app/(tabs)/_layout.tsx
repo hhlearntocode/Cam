@@ -4,23 +4,20 @@ import { router, Tabs } from "expo-router";
 import React, { useState } from "react";
 import { StyleSheet, TouchableOpacity } from "react-native";
 import AddStudentModal from "../../components/AddStudent";
+import useFetchStudents from "../../hooks/useFetchStudents";
 
-interface TodoLayoutProps {
-    setStudents: React.Dispatch<React.SetStateAction<any[]>>;
-    setEditModalStates: React.Dispatch<
-        React.SetStateAction<Record<string, boolean>>
-    >;
-}
-
-const TodoLayout: React.FC<TodoLayoutProps> = ({
-    setStudents,
-    setEditModalStates,
-}) => {
+const TodoLayout = () => {
     const [modalVisible, setModalVisible] = useState(false);
+    const { fetchStudents } = useFetchStudents();
     const goToHome = () => {
         router.push("/home");
     };
-
+    const notificationButton = (item: any) => {
+        router.push({
+            pathname: "/notification",
+            params: { notificationId: item.id },
+        });
+    };
     //OPTION IN TAB.SCREEN
     const renderHeaderTitle = () => (
         <TouchableOpacity style={styles.headerContainer} onPress={goToHome}>
@@ -44,15 +41,16 @@ const TodoLayout: React.FC<TodoLayoutProps> = ({
                 >
                     <Feather name="user-plus" size={24} color="#000" />
                 </TouchableOpacity>
-                <AddStudentModal
-                    visible={modalVisible}
-                    onClose={() => setModalVisible(false)}
-                    setStudents={setStudents}
-                    setEditModalStates={setEditModalStates}
-                />
+                {modalVisible && (
+                    <AddStudentModal
+                        visible={modalVisible}
+                        onClose={() => setModalVisible(false)}
+                        refreshStudents={fetchStudents}
+                    />
+                )}
                 <TouchableOpacity
                     style={styles.notificationButton}
-                    onPress={() => null}
+                    onPress={notificationButton}
                 >
                     <Feather name="bell" size={24} color="#000" />
                 </TouchableOpacity>
@@ -95,6 +93,14 @@ const TodoLayout: React.FC<TodoLayoutProps> = ({
             <Tabs.Screen
                 key="detailVideo"
                 name="detailVideo"
+                options={{
+                    href: null,
+                    headerShown: false,
+                }}
+            />
+            <Tabs.Screen
+                key="notification"
+                name="notification"
                 options={{
                     href: null,
                     headerShown: false,

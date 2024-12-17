@@ -1,13 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
-import {
-    collection,
-    deleteDoc,
-    doc,
-    getDoc,
-    getDocs,
-    updateDoc,
-} from "firebase/firestore";
+import { deleteDoc, doc, getDoc, updateDoc } from "firebase/firestore";
 import { getDownloadURL, ref, uploadBytes } from "firebase/storage";
 import React, { useState } from "react";
 import {
@@ -20,7 +13,8 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
-import { db, storage } from "../firebase.config"; // Firebase config
+import { db, storage } from "../firebase.config";
+import useFetchStudents from "../hooks/useFetchStudents";
 import useForm from "../hooks/useForm";
 import StudentInput from "./StudentInput";
 
@@ -28,12 +22,14 @@ interface EditStudentModalProps {
     visible: boolean;
     onClose: () => void;
     studentId: string;
+    refreshStudents: () => void;
 }
 
 const EditStudentModal: React.FC<EditStudentModalProps> = ({
     visible,
     onClose,
     studentId,
+    refreshStudents,
 }) => {
     const {
         name,
@@ -47,9 +43,8 @@ const EditStudentModal: React.FC<EditStudentModalProps> = ({
         image,
         setImage,
     } = useForm();
+    const { fetchStudents, setStudents } = useFetchStudents();
     const [currentImageUrl, setCurrentImageUrl] = useState("");
-    const [students, setStudents] = useState([]);
-    const [editModalStates, setEditModalStates] = useState({});
 
     // Load student data
     React.useEffect(() => {
@@ -64,6 +59,8 @@ const EditStudentModal: React.FC<EditStudentModalProps> = ({
                     setName(data.name || "");
                     setAge(data.age?.toString() || "");
                     setCurrentImageUrl(data.imageUrl || "");
+                    setAddress(data.address || "");
+                    setSchool(data.school || "");
                 } else {
                     console.log("No such document!");
                 }
@@ -116,54 +113,17 @@ const EditStudentModal: React.FC<EditStudentModalProps> = ({
                 name,
                 age: parseInt(age, 10),
                 imageUrl,
+                address: address,
+                school: school,
                 updatedAt: new Date(), // Thêm thời gian cập nhật
             });
 
             console.log("Document updated successfully");
-
-            setName("");
-            setAge("");
-            setImage("");
-            setCurrentImageUrl(imageUrl);
-
+            await fetchStudents();
+            refreshStudents();
             onClose();
         } catch (error) {
             console.error("Error updating student:", error);
-        }
-    };
-
-    const fetchStudents = async () => {
-        try {
-            // const userId = sessionStorage.getItem("userId");
-            const userId = await AsyncStorage.getItem("userId");
-
-            if (!userId) {
-                console.error("User ID is missing from AsyncStorage.");
-                return;
-            }
-
-            // Fetch all students
-            const querySnapshot = await getDocs(collection(db, "students"));
-
-            // Filter students where the current user is listed in parentIDs
-            const studentsList = querySnapshot.docs
-                .map((doc) => ({
-                    id: doc.id,
-                    ...doc.data(),
-                }))
-                .filter((student) => student.userId?.includes(userId));
-
-            // Update state with the filtered students list
-            setStudents(studentsList);
-
-            // Create initial modal states for each student
-            const initialModalStates = studentsList.reduce((acc, student) => {
-                acc[student.id] = false; // Set all modals to closed initially
-                return acc;
-            }, {});
-            setEditModalStates(initialModalStates);
-        } catch (error) {
-            console.error("Error fetching students: ", error);
         }
     };
 
@@ -208,10 +168,15 @@ const EditStudentModal: React.FC<EditStudentModalProps> = ({
 
                         // Proceed with deletion
                         await deleteDoc(studentRef);
-
+                        setStudents((prevStudents) =>
+                            prevStudents.filter(
+                                (student) => student.id !== studentId
+                            )
+                        );
                         // Refresh the student list
                         await fetchStudents();
-
+                        refreshStudents();
+                        onClose();
                         console.log(
                             `Student with ID ${studentId} deleted successfully.`
                         );
@@ -303,7 +268,7 @@ const EditStudentModal: React.FC<EditStudentModalProps> = ({
                         </TouchableOpacity>
                         <TouchableOpacity
                             style={styles.deleteButton}
-                            onPress={() => handleDeleteStudent(item.id)}
+                            onPress={() => handleDeleteStudent(studentId)}
                         >
                             <Text style={styles.submitButtonText}>
                                 Xóa học sinh

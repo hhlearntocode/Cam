@@ -8,16 +8,28 @@ import { db } from "../../firebase.config";
 import useForm from "../../hooks/useForm";
 
 const RegisterPage = () => {
-    const { name, setName, password, setPassword, phone, setPhone } = useForm();
+    const {
+        name,
+        setName,
+        password,
+        setPassword,
+        phone,
+        setPhone,
+        confirmPassword,
+        setConfirmPassword,
+    } = useForm();
 
     const router = useRouter();
 
     const onSignUpPress = async () => {
-        if (!phone || !name || !password) {
+        if (!phone || !name || !password || !confirmPassword) {
             Alert.alert("Please enter all required information");
             return;
         }
-
+        if (password != confirmPassword) {
+            Alert.alert("Password do not match");
+            return;
+        }
         try {
             const docRef = await addDoc(collection(db, "user"), {
                 name,
@@ -26,7 +38,7 @@ const RegisterPage = () => {
                 createdAt: new Date().toISOString(),
             });
 
-            Alert.alert("Registration successful", `User ID: ${docRef.id}`);
+            Alert.alert("Registration successful");
 
             router.push("/login");
         } catch (error) {
@@ -80,8 +92,8 @@ const RegisterPage = () => {
                 <InputField
                     label="Confirm password"
                     placeholder="Confirm password"
-                    value={phone}
-                    onChangeText={setPhone}
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
                 />
             </View>
 
