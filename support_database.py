@@ -1,80 +1,87 @@
-import cv2
-import mtcnn
-import face_recognition
-from PIL import Image
-import numpy as np
 
-face_detector = mtcnn.MTCNN()
+import firebase_admin
+from firebase_admin import credentials
+from firebase_admin import firestore
+from firebase_admin import storage
+from extract_OSNET import createOSNETDatabase
 
-def detect_and_save_face(image_path):
-        """
-        Detect and save face embeddings from an image
-        """
-        # Đọc ảnh
-        image = cv2.imread(image_path)
-        image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        
-        # Detect faces sử dụng MTCNN
-        faces = face_detector.detect_faces(image_rgb)
-        
-        detected_faces = []
-        
-        if len(faces) > 0:
-            for face in faces:
-                # Lấy tọa độ khuôn mặt
-                x, y, w, h = face['box']
-                
-                # Cắt khuôn mặt
-                face_img = image_rgb[y:y+h, x:x+w]
-                
-                # Chuyển sang định dạng phù hợp với face_recognition
-                face_img_pil = Image.fromarray(face_img)
-                
-                # Tạo face embedding
-                try:
-                    face_embedding = face_recognition.face_encodings(
-                        np.array(face_img_pil)
-                    )[0]
-                    
-                    detected_face_info = {
-                        'embedding': face_embedding,
-                        'bbox': {
-                            'x': x,
-                            'y': y,
-                            'width': w,
-                            'height': h
-                        }
-                    }
-                    
-                    detected_faces.append(detected_face_info)
-                    
-                    print(f"Detected face")
-                except Exception as e:
-                    print(f"Error creating embedding: {e}")
+"""
+    Về phía người dùng
+    B1: Người dùng push ảnh học sinh (thực hiện ở app)
+    B2: Chờ trích xuất ảnh vector đặc trưng
+
+    Về phía lập người lập trình
+    B1: Lấy hết ảnh học sinh về và lưu vào mảng students ví dụ [image, id]
+    B2: detect_and_save_face để trích xuất đặc trưng của image 
+    B3: cập nhật thêm mảng vector đặc trưng của student trên firebase 
+"""
+
+"""
+hàm kết nối firebase
+"""
+def dbConnection():
+    if not firebase_admin._apps:
+        cred = credentials.Certificate("soictallday.json")
+        firebase_admin.initialize_app(cred, {
+            'storageBucket': 'blogapp-cf07c.appspot.com'
+        })
+    db = firestore.client()
+    return db
+
+
+"""
+Hàm này để trả về 1 mảng gồm những phần tử gồm 2 thông tin [imageUrl, id]
+imageUrl là cái link dẫn thẳng tới ảnh học sinh trên google
+"""
+def get_all_student_data_with_image_and_id():
+    db = dbConnection()
+    students = db.collection('students').stream()
+    student_data = []
+    for student in students:
+        student_data.append([student.to_dict().get("imageUrl"), student.id])
+    return student_data
+
+
+def find_parent(idStudent):
+    db = dbConnection()
+    student = db.collection('students').document(idStudent).get()
+    parent = student.get('userId')
+    return parent
+
+import requests
+import os
+
+# Hàm tải ảnh từ URL và lưu vào máy tính
+def download_image(image_url, student_id, save_dir="OSNET"):
+    # Tạo thư mục lưu trữ nếu chưa tồn tại
+    if not os.path.exists(save_dir):
+        os.makedirs(save_dir)
+
+    try:
+        # Gửi yêu cầu HTTP để tải ảnh
+        response = requests.get(image_url, stream=True)
+        if response.status_code == 200:
+            # Đường dẫn lưu ảnh
+            file_path = os.path.join(save_dir, f"{student_id}.jpg")
+            # Lưu nội dung ảnh vào file
+            with open(file_path, "wb") as file:
+                for chunk in response.iter_content(1024):
+                    file.write(chunk)
+            print(f"Downloaded: {student_id}")
         else:
-            print("No faces detected")
-        
-        return detected_faces
+            print(f"Failed to download image for {student_id}: HTTP {response.status_code}")
+    except Exception as e:
+        print(f"Error downloading image for {student_id}: {e}")
 
-from scipy.spatial.distance import cosine
-
-def match_faces_to_database(face_embeddings, face_database, similarity_threshold=0.5):
-    results = {}
-
-    for idx, embedding in enumerate(face_embeddings):
-        matched_ids = []
-        
-        for db_id, db_embedding in face_database.items():
-            similarity = 1 - cosine(embedding, db_embedding)  # Convert cosine distance to similarity (1 = identical)
-            
-            if similarity >= similarity_threshold:
-                matched_ids.append({'id': db_id, 'score': similarity})
-        
-        # Sort matched IDs by similarity score in descending order
-        matched_ids = sorted(matched_ids, key=lambda x: x['score'], reverse=True)
-        results[idx] = matched_ids
-
-    return results
-
-
-#Can be improve by using FAISS for much faster speed and scalability
+#Buoc dau tien khi co tre em moi duoc them vao
+"""
+Những hàm dưới đây khi chạy cùng lúc sẽ tiến hành tải các ảnh (học sinh) từ firebase xuống
+Hàm createOSNETDatabase dùng để tạo ra file embeddings.
+"""
+list_student = get_all_student_data_with_image_and_id()
+for image_url, student_id in list_student:
+    if image_url:  
+        download_image(image_url, student_id)
+    else:
+        print(f"No image URL found for {student_id}")
+createOSNETDatabase()

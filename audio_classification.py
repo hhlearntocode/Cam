@@ -9,7 +9,7 @@ from transformers import Wav2Vec2Processor, Wav2Vec2ForCTC
 import torch
 class audioProcess:
     def __init__(self):
-        self.yamnet_model = hub.load('https://tfhub.dev/google/yamnet/1')
+        self.yamnet_model = hub.load('https://www.kaggle.com/models/google/yamnet/TensorFlow2/yamnet/1')
         self.labels_path = "labels.csv"  
         self.labels = pd.read_csv(self.labels_path)
         self.class_names = self.labels['display_name'].to_list()
@@ -175,3 +175,4 @@ class audioProcess:
         detected_keywords, detected_sound = self.analyze_text_audio(text, detected)
         
         return detected, scores, text, detected_keywords, detected_sound
+    
