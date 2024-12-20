@@ -22,9 +22,7 @@ const TodoLayout = () => {
     const renderHeaderTitle = () => (
         <TouchableOpacity style={styles.headerContainer} onPress={goToHome}>
             <Image
-                source={{
-                    uri: "https://th.bing.com/th/id/R.7b28add3965d218ba46f61c16f1ac32c?rik=QAQ%2bzMIUs0OylA&pid=ImgRaw&r=0",
-                }}
+                source={require("../../assets/hifive_logo.png")}
                 contentFit="contain"
                 transition={1000}
                 style={styles.avatar}
@@ -39,7 +37,7 @@ const TodoLayout = () => {
                     style={styles.userPlusButton}
                     onPress={() => setModalVisible(true)}
                 >
-                    <Feather name="user-plus" size={24} color="#000" />
+                    <Feather name="user-plus" size={24} color="#6C63FF" />
                 </TouchableOpacity>
                 {modalVisible && (
                     <AddStudentModal
@@ -52,7 +50,7 @@ const TodoLayout = () => {
                     style={styles.notificationButton}
                     onPress={notificationButton}
                 >
-                    <Feather name="bell" size={24} color="#000" />
+                    <Feather name="bell" size={24} color="#6C63FF" />
                 </TouchableOpacity>
             </>
         );
@@ -64,48 +62,39 @@ const TodoLayout = () => {
         headerRight: renderHeaderRight,
     };
     //name={icon} cua fontawesome khong nhan du lieu tu data nen phai tuong minh
-    type FeatherIconName = "home" | "user" | "settings";
+    type FeatherIconName = "home" | "user" | "settings" | null;
     const showScreen: {
         name: string;
         title: string;
         icon: FeatherIconName;
+        headerShown?: boolean;
+        href?: string | null;
+        color?: string
     }[] = [
-        { name: "home", title: "Home", icon: "home" },
-        { name: "setting", title: "Setting", icon: "settings" },
-        { name: "user", title: "Profile", icon: "user" },
+        { name: "home", title: "Home", icon: "home", headerShown: true },
+        { name: "setting", title: "Setting", icon: "settings", headerShown: false },
+        { name: "user", title: "Profile", icon: "user", headerShown: true },
+        { name: "detailVideo", title: "Video Detail", icon: null, headerShown: false, href: null },
+        { name: "notification", title: "Notifications", icon: null, headerShown: true, href: null },
     ];
 
     return (
         <Tabs>
-            {showScreen.map(({ name, title, icon }) => (
+            {showScreen.map(({ name, title, icon, headerShown = true, href = undefined }) => (
                 <Tabs.Screen
-                    key={name}
-                    name={name}
-                    options={{
-                        ...commonOptions,
-                        title,
-                        tabBarIcon: ({ color }) => (
-                            <Feather size={28} name={icon} color={color} />
-                        ),
+                key={name}
+                name={name}
+                options={{
+                    ...commonOptions,
+                    title,
+                    headerShown,
+                    href,
+                    tabBarIcon: icon
+                        ? ({ color }) => <Feather size={28} name={icon} color={color} />
+                        : undefined, 
                     }}
-                />
-            ))}
-            <Tabs.Screen
-                key="detailVideo"
-                name="detailVideo"
-                options={{
-                    href: null,
-                    headerShown: false,
-                }}
-            />
-            <Tabs.Screen
-                key="notification"
-                name="notification"
-                options={{
-                    href: null,
-                    headerShown: false,
-                }}
-            />
+                    />
+                ))}
         </Tabs>
     );
 };
@@ -122,29 +111,31 @@ const styles = StyleSheet.create({
     headerTextContainer: {
         justifyContent: "center",
     },
-    headerTitle: {
-        color: "#fff",
-        fontSize: 16,
-        fontWeight: "bold",
-    },
-    headerSubtitle: {
-        color: "#ccc",
-        fontSize: 14,
-    },
     notificationButton: {
         marginRight: 20,
-        padding: 10,
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: "#EDEAFF",
+        justifyContent: "center",
+        alignItems: "center",
     },
     userPlusButton: {
         // borderRadius: 20,
         // justifyContent: "center",
         // alignItems: "center",
-        marginRight: 10,
+        marginRight: 12,
         // shadowColor: "#000",
         // shadowOffset: { width: 0, height: 2 },
         // shadowOpacity: 0.3,
         // shadowRadius: 4,
         // elevation: 5,
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: "#EDEAFF",
+        justifyContent: "center",
+        alignItems: "center",
     },
 });
 

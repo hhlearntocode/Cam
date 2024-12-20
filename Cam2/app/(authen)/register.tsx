@@ -1,7 +1,7 @@
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { addDoc, collection } from "firebase/firestore";
-import { Alert, StyleSheet, Text, View } from "react-native";
+import { Alert, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import ActionButton from "../../components/ActionButton";
 import InputField from "../../components/InputField";
 import { db } from "../../firebase.config";
@@ -20,6 +20,9 @@ const RegisterPage = () => {
     } = useForm();
 
     const router = useRouter();
+    const goToLogin = () => {
+        router.push("/login");
+    };
 
     const onSignUpPress = async () => {
         if (!phone || !name || !password || !confirmPassword) {
@@ -52,7 +55,7 @@ const RegisterPage = () => {
             {/* Logo */}
             <Image
                 style={styles.logo}
-                source="https://www.musicman.co.jp/sites/default/files/inline-images/hifive_logo.jpg"
+                source={require("../../assets/hifive_logo.png")}
                 contentFit="contain"
                 transition={1000}
             ></Image>
@@ -61,8 +64,8 @@ const RegisterPage = () => {
             {/* Email Input */}
             <View style={styles.inputContainer}>
                 <InputField
-                    label="Your email address"
-                    placeholder="Name"
+                    label="Username"
+                    placeholder="Enter your username"
                     value={name}
                     onChangeText={setName}
                 />
@@ -71,8 +74,8 @@ const RegisterPage = () => {
             {/* Password Input */}
             <View style={styles.inputContainer}>
                 <InputField
-                    label="Choose a password"
-                    placeholder="Password"
+                    label="Password"
+                    placeholder="Enter your password"
                     value={password}
                     onChangeText={setPassword}
                     secureTextEntry
@@ -81,8 +84,8 @@ const RegisterPage = () => {
             {/* Phone Input */}
             <View style={styles.inputContainer}>
                 <InputField
-                    label="Your phone number"
-                    placeholder="Phone"
+                    label="Phone"
+                    placeholder="Enter your number"
                     value={phone}
                     onChangeText={setPhone}
                 />
@@ -101,6 +104,13 @@ const RegisterPage = () => {
             <View style={styles.buttonContainer}>
                 <ActionButton title="Sign up" onPress={onSignUpPress} />
             </View>
+            {/* Sign in */}
+            <View style={styles.loginContain}>
+                <Text>Already have an account?</Text>
+                <TouchableOpacity onPress={goToLogin}>
+                    <Text style={styles.loginText}>Login</Text>
+                </TouchableOpacity>
+            </View>
         </View>
     );
 };
@@ -109,8 +119,9 @@ const styles = StyleSheet.create({
     container: {
         flex: 1,
         padding: 20,
-        backgroundColor: "#fefefe",
+        backgroundColor: "#F8FAFC",
         alignItems: "center",
+        marginTop: 20,
     },
     logo: {
         alignSelf: "center",
@@ -125,11 +136,18 @@ const styles = StyleSheet.create({
     },
     inputContainer: {
         width: "100%",
-        marginBottom: 10,
     },
     buttonContainer: {
         width: "100%",
         marginTop: 16,
+    },
+    loginContain: {
+        flexDirection: "row",
+        gap: 3,
+        marginTop: 20,
+    },
+    loginText: {
+        color: "blue",
     },
 });
 

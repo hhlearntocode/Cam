@@ -23,15 +23,18 @@ const SettingScreen = () => {
         }).start();
     };
     return (
-        <>
+        <View style={styles.container}>
+            <Text style={styles.title}>Notification Settings</Text>
             <View style={styles.div1}>
-                <Text style={styles.title}>Notification Settings</Text>
                 <Text style={styles.title_content}>
                     Here you can adjust your notification settings seamlessly
                 </Text>
             </View>
             <View style={styles.div2}>
                 <View style={styles.setting1}>
+                    <View style={styles.iconContainer}>
+                        <Feather name="phone-call" size={24} color="#6C63FF" />
+                    </View>
                     <Text style={styles.setting1_content}>Calls</Text>
                     <TouchableOpacity onPress={() => setShowDescription(true)}>
                         <Feather name="help-circle" size={20} color="#6c6c6c" />
@@ -82,29 +85,32 @@ const SettingScreen = () => {
                     </View>
                 </TouchableOpacity>
             </View>
-        </>
+        </View>
     );
 };
 
 export default SettingScreen;
 
 const styles = StyleSheet.create({
+    container: {
+        padding: 16,
+    },
     div1: {
         backgroundColor: "#ffffff",
-        padding: 20,
+        padding: 16,
         borderRadius: 10,
         shadowColor: "#000",
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.1,
         shadowRadius: 4,
         elevation: 3,
-        marginBottom: 30,
+        marginBottom: 20,
     },
     title: {
         fontSize: 24,
         fontWeight: "bold",
         color: "#1a1a1a",
-        marginBottom: 10,
+        marginBottom: 30,
     },
     title_content: {
         fontSize: 16,
@@ -124,9 +130,17 @@ const styles = StyleSheet.create({
         gap: 10,
         alignItems: "center",
     },
+    iconContainer: {
+        width: 40,
+        height: 40,
+        borderRadius: 20,
+        backgroundColor: "#EDEAFF",
+        justifyContent: "center",
+        alignItems: "center",
+    },
     setting1_content: {
         fontSize: 24,
-        fontWeight: "bold",
+        fontWeight: "500",
         color: "#000",
     },
     switch: {

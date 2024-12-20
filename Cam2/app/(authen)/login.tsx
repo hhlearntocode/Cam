@@ -76,18 +76,18 @@ const LoginPage = () => {
             {/* Logo */}
             <Image
                 style={styles.logo}
-                source="https://www.musicman.co.jp/sites/default/files/inline-images/hifive_logo.jpg"
+                source={require("../../assets/hifive_logo.png")}
                 contentFit="contain"
                 transition={1000}
             ></Image>
             {/* Title */}
             <Text style={styles.title}>Work without limits</Text>
 
-            {/* Email Input */}
+            {/* Name Input */}
             <View style={styles.inputContainer}>
                 <InputField
-                    label="Your email address"
-                    placeholder="Email"
+                    label="Username"
+                    placeholder="Enter your username"
                     value={name}
                     onChangeText={setName}
                 />
@@ -95,8 +95,8 @@ const LoginPage = () => {
             {/* Password Input */}
             <View style={styles.inputContainer}>
                 <InputField
-                    label="Choose a password"
-                    placeholder="Password"
+                    label="Password"
+                    placeholder="Enter your password"
                     value={password}
                     onChangeText={setPassword}
                     secureTextEntry
@@ -108,9 +108,12 @@ const LoginPage = () => {
             </View>
 
             {/* Divider */}
-            <Text style={styles.divider}>
-                _______________________________________________
-            </Text>
+            <View style={styles.dividerContainer}>
+                <View style={styles.divider} />
+                <View style={styles.textContainer}>
+                    <Text style={styles.text}>Or</Text>
+                </View>
+            </View>
             {/* Sign up with Google */}
             <TouchableOpacity style={styles.button} onPress={() => {}}>
                 <Image
@@ -137,7 +140,7 @@ const styles = StyleSheet.create({
         flex: 1,
         justifyContent: "center",
         padding: 20,
-        backgroundColor: "#fefefe",
+        backgroundColor: "#F8FAFC",
         alignItems: "center",
     },
     logo: {
@@ -152,18 +155,30 @@ const styles = StyleSheet.create({
         marginBottom: 100,
     },
     inputContainer: {
-        marginBottom: 16,
         width: "100%",
     },
     buttonContainer: {
         width: "100%",
     },
-    divider: {
-        fontSize: 16,
-        color: "#999",
-        marginVertical: 16,
-        opacity: 0.2,
+    dividerContainer: {
+        width: "100%",
+        alignItems: "center",
+        position: "relative",
+        marginVertical: 30,
     },
+    divider: {
+        width: "100%",
+        height: 1,
+        backgroundColor: "#a7a7a7",
+        position: "relative",
+    },
+    textContainer: {
+        position: "absolute",
+        bottom: -13,
+        backgroundColor: "#F8FAFC",
+        padding: 5,
+    },
+    text: { color: "black", fontSize: 14, fontWeight: "700" },
     button: {
         width: "100%",
         justifyContent: "center",

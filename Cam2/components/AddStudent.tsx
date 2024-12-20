@@ -53,7 +53,7 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
         const result = await ImagePicker.launchImageLibraryAsync({
             mediaTypes: ImagePicker.MediaTypeOptions.Images,
             allowsEditing: true,
-            aspect: [4, 3],
+            aspect: [3, 4],
             quality: 1,
         });
 
@@ -153,6 +153,7 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
                             value={address}
                             onChangeText={setAddress}
                         />
+                        <View style={styles.imgContainer}>
                         <TouchableOpacity
                             onPress={handleImagePicker}
                             style={styles.uploadButton}
@@ -171,7 +172,7 @@ const AddStudentModal: React.FC<AddStudentModalProps> = ({
                                 No image selected
                             </Text>
                         )}
-
+                        </View>
                         <Text style={styles.title}>Thông tin trường học</Text>
                         <StudentInput
                             label="School name"
@@ -227,8 +228,11 @@ const styles = StyleSheet.create({
         fontSize: 20,
         fontWeight: 500,
     },
+    imgContainer:{
+        alignItems: "center",
+    },
     uploadButton: {
-        backgroundColor: "#28a745",
+        backgroundColor: "#5b5f97",
         padding: 10,
         borderRadius: 20,
         marginVertical: 16,
@@ -241,7 +245,7 @@ const styles = StyleSheet.create({
         fontWeight: "bold",
     },
     submitButton: {
-        backgroundColor: "#28a745",
+        backgroundColor: "#5b5f97",
         padding: 14,
         borderRadius: 20,
         width: "100%",

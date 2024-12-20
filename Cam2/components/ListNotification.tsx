@@ -99,7 +99,7 @@ const styles = StyleSheet.create({
         flexDirection: "row",
         alignItems: "center",
         padding: 16,
-        backgroundColor: "#ffffff",
+        backgroundColor: "#EDEAFF",
         borderRadius: 20,
         marginBottom: 12,
         shadowColor: "#000",
@@ -135,11 +135,11 @@ const styles = StyleSheet.create({
     title: {
         fontSize: 16,
         color: "#000",
-        fontWeight: "bold",
+        fontWeight: "500",
     },
     details: {
         fontSize: 14,
-        color: "#6c757d",
+        color: "#000",
     },
 });
 

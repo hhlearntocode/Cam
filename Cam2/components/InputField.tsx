@@ -38,9 +38,10 @@ const styles = StyleSheet.create({
         marginBottom: 16,
     },
     label: {
-        fontSize: 14,
+        fontSize: 16,
         color: "#000",
         marginBottom: 8,
+        fontWeight: "500",
     },
     inputField: {
         height: 50,

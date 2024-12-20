@@ -35,7 +35,26 @@ const HomeScreen = () => {
             <Swiper
                 style={styles.wrapper}
                 showsButtons={true}
-                showsPagination={false}
+                showsPagination={true}
+                paginationStyle={{
+                    bottom: 10,
+                }}
+                dotStyle={{
+                    backgroundColor: "rgba(255,165,0,0.3)",
+                    width: 8,
+                    height: 8,
+                    borderRadius: 4,
+                    marginHorizontal: 3,
+                }}
+                activeDotStyle={{
+                    backgroundColor: "#6C63FF",
+                    width: 10,
+                    height: 10,
+                    borderRadius: 5,
+                    marginHorizontal: 3,
+                }}
+                nextButton={<Text style={styles.buttonText}>›</Text>} // Custom next button
+                prevButton={<Text style={styles.buttonText}>‹</Text>}
             >
                 {students.map((item) => (
                     <TouchableOpacity
@@ -51,23 +70,22 @@ const HomeScreen = () => {
                                         style={styles.studentImage}
                                     />
                                 )}
-                                <View style={styles.profile}>
-                                    <Text style={styles.title}>Học sinh</Text>
-                                    <Text style={styles.studentText}>
-                                        Tên: {item.name}
-                                    </Text>
-                                    <Text style={styles.studentText}>
-                                        Tuổi: {item.age}
-                                    </Text>
-                                    <Text style={styles.studentText}>
-                                        Địa chỉ: {item.address}
-                                    </Text>
-                                </View>
                             </View>
                             <View style={styles.schoolInfo}>
-                                <Text style={styles.title}>Trường học</Text>
+                                <Text style={styles.title}>
+                                    Thông tin học sinh
+                                </Text>
                                 <Text style={styles.studentText}>
-                                    Tên: {item.school}
+                                    Tên: {item.name}
+                                </Text>
+                                <Text style={styles.studentText}>
+                                    Tuổi: {item.age}
+                                </Text>
+                                <Text style={styles.studentText}>
+                                    Địa chỉ: {item.address}
+                                </Text>
+                                <Text style={styles.studentText}>
+                                    Trường: {item.school}
                                 </Text>
                             </View>
                         </View>
@@ -99,28 +117,31 @@ export default HomeScreen;
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: "#ffffff",
-        padding: 20,
+        backgroundColor: "#fffffb",
         gap: 10,
+        padding: 16,
     },
     container1: {
-        backgroundColor: "#ECEBDE",
+        backgroundColor: "#EDEAFF",
         flex: 1,
         borderRadius: 40,
-        paddingHorizontal: 20,
-        paddingTop: 20,
+        padding: 10,
         height: "auto",
+        marginTop: 20,
     },
     wrapper: {},
-    profile: {},
+    buttonText: {
+        color: "#6C63FF",
+        fontSize: 44,
+        fontWeight: "bold",
+    },
     studentItem: {
         flex: 1,
-        gap: 10,
-    },
-    studentInfo: {
-        flexDirection: "row",
         gap: 20,
+        flexDirection: "row",
+        alignItems: "center",
     },
+    studentInfo: {},
     studentImage: {
         width: 140,
         height: 140,
@@ -128,19 +149,22 @@ const styles = StyleSheet.create({
     },
     schoolInfo: {},
     title: {
-        fontSize: 24,
+        fontSize: 20,
         fontWeight: "500",
+        color: "#000",
+        marginBottom: 12,
     },
     studentText: {
         fontSize: 16,
         color: "#000",
     },
     container2: {
-        gap: 10,
+        paddingTop: 20,
         height: "60%",
     },
     smallTitle: {
         fontSize: 20,
         fontWeight: "bold",
+        color: "#000"
     },
 });
